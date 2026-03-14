@@ -7,6 +7,6 @@ import { QueueService } from './queue.service';
     BullModule.registerQueue({ name: 'workflow-execution' }),
   ],
   providers: [QueueService],
-  exports: [QueueService],
+  exports: [QueueService, BullModule],
 })
 export class QueueModule {}
