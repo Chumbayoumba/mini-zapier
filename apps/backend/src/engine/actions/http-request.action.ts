@@ -11,13 +11,6 @@ export class HttpRequestAction implements ActionHandler {
   readonly type = 'HTTP_REQUEST';
   private readonly logger = new Logger(HttpRequestAction.name);
 
-  private readonly BLOCKED_IP_RANGES = [
-    { prefix: '127.', mask: 8 },
-    { prefix: '10.', mask: 8 },
-    { prefix: '0.0.0.0', exact: true },
-    { prefix: '169.254.169.254', exact: true },
-  ];
-
   async execute(config: any): Promise<any> {
     const { url, method = 'GET', headers = {}, body, timeout = 30000, retries = 3 } = config;
 
@@ -61,40 +54,77 @@ export class HttpRequestAction implements ActionHandler {
       throw new BadRequestException('Only http and https protocols are allowed');
     }
 
-    const hostname = parsed.hostname;
+    const hostname = parsed.hostname.replace(/^\[|\]$/g, '');
 
     if (hostname === 'localhost' || hostname === '0.0.0.0') {
       throw new BadRequestException('Requests to localhost are not allowed');
     }
 
     if (net.isIP(hostname)) {
-      this.assertNotPrivateIp(hostname);
+      if (this.isPrivateIp(hostname)) {
+        throw new BadRequestException(`Requests to private IP addresses are not allowed: ${hostname}`);
+      }
     } else {
-      // Resolve DNS to check the actual IP
+      // Resolve DNS (both A and AAAA records) to check actual IPs
+      let ipv4Addresses: string[] = [];
+      let ipv6Addresses: string[] = [];
+      let ipv4Error = false;
+      let ipv6Error = false;
+
       try {
-        const addresses = await dns.resolve4(hostname);
-        for (const addr of addresses) {
-          this.assertNotPrivateIp(addr);
-        }
+        ipv4Addresses = await dns.resolve4(hostname);
       } catch {
-        // DNS resolution failed — let axios handle it
+        ipv4Error = true;
+      }
+
+      try {
+        ipv6Addresses = await dns.resolve6(hostname);
+      } catch {
+        ipv6Error = true;
+      }
+
+      // Fail-closed: if both DNS lookups fail, reject the request
+      if (ipv4Error && ipv6Error) {
+        throw new BadRequestException('DNS resolution failed for hostname');
+      }
+
+      // Check all resolved addresses for private IPs
+      const allAddresses = [...ipv4Addresses, ...ipv6Addresses];
+      for (const addr of allAddresses) {
+        if (this.isPrivateIp(addr)) {
+          throw new BadRequestException(`Requests to private IP addresses are not allowed: ${addr}`);
+        }
       }
     }
   }
 
-  private assertNotPrivateIp(ip: string): void {
-    const parts = ip.split('.').map(Number);
-
-    const isPrivate =
-      ip === '0.0.0.0' ||
-      ip === '169.254.169.254' ||
-      parts[0] === 127 ||                              // 127.0.0.0/8
-      parts[0] === 10 ||                               // 10.0.0.0/8
-      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || // 172.16.0.0/12
-      (parts[0] === 192 && parts[1] === 168);           // 192.168.0.0/16
-
-    if (isPrivate) {
-      throw new BadRequestException(`Requests to private IP addresses are not allowed: ${ip}`);
+  private isPrivateIp(ip: string): boolean {
+    // Handle IPv4-mapped IPv6 (::ffff:x.x.x.x)
+    if (ip.startsWith('::ffff:')) {
+      return this.isPrivateIp(ip.slice(7));
     }
+
+    // IPv6 checks
+    if (net.isIPv6(ip)) {
+      const lower = ip.toLowerCase();
+      if (lower === '::1' || lower === '::') return true;
+      if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // fc00::/7
+      if (lower.startsWith('fe80')) return true; // fe80::/10
+      return false;
+    }
+
+    // IPv4 checks
+    const parts = ip.split('.').map(Number);
+    if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return true;
+
+    return (
+      parts[0] === 0 ||                                           // 0.0.0.0/8
+      parts[0] === 127 ||                                         // 127.0.0.0/8
+      parts[0] === 10 ||                                          // 10.0.0.0/8
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||  // 172.16.0.0/12
+      (parts[0] === 192 && parts[1] === 168) ||                   // 192.168.0.0/16
+      (parts[0] === 169 && parts[1] === 254) ||                   // 169.254.0.0/16
+      (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127)    // 100.64.0.0/10
+    );
   }
 }
