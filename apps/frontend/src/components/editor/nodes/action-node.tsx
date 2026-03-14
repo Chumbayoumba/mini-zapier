@@ -27,7 +27,7 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 function ActionNode({ data, selected }: NodeProps) {
-  const actionType = data?.type as string || 'HTTP_REQUEST';
+  const actionType = (data?.type as string) || 'HTTP_REQUEST';
   const color = ACTION_COLORS[actionType] || '#3B82F6';
   const Icon = ACTION_ICONS[actionType] || Globe;
   const label = (data?.label as string) || actionType;
@@ -62,9 +62,9 @@ function ActionNode({ data, selected }: NodeProps) {
       {/* Body */}
       <div className="px-3 py-2">
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{label}</p>
-        {data?.description && (
-          <p className="text-xs text-gray-500 mt-0.5">{data.description as string}</p>
-        )}
+        {data?.description ? (
+          <p className="text-xs text-gray-500 mt-0.5">{String(data.description)}</p>
+        ) : null}
       </div>
 
       {/* Output handle */}

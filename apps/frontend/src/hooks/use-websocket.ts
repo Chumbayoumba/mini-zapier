@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '@/stores/auth-store';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
 
@@ -14,11 +13,12 @@ interface UseWebSocketOptions {
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const { namespace = '/executions', autoConnect = true } = options;
   const socketRef = useRef<Socket | null>(null);
-  const token = useAuthStore((s) => s.accessToken);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     if (!autoConnect) return;
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
     const socket = io(`${WS_URL}${namespace}`, {
       auth: { token },
@@ -37,7 +37,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [namespace, token, autoConnect]);
+  }, [namespace, autoConnect]);
 
   const on = useCallback((event: string, handler: (...args: any[]) => void) => {
     socketRef.current?.on(event, handler);

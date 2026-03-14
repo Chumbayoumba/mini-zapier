@@ -6,7 +6,7 @@ export class CreateWorkflowDto {
   @IsString()
   @MinLength(1)
   @MaxLength(100)
-  name: string;
+  name!: string;
 
   @ApiPropertyOptional({ example: 'A workflow that does something useful' })
   @IsString()

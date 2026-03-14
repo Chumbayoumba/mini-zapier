@@ -94,13 +94,15 @@ model WorkflowVersion {
 }
 
 model Trigger {
-  id          String      @id @default(cuid())
-  workflowId  String      @unique
-  type        TriggerType
-  config      Json        @default("{}")
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  workflowId      String      @unique
+  type            TriggerType
+  config          Json        @default("{}")
+  isActive        Boolean     @default(true)
+  webhookToken    String?     @unique
+  lastTriggeredAt DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   workflow    Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 

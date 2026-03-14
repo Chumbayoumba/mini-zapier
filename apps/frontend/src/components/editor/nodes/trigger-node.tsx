@@ -22,7 +22,7 @@ const TRIGGER_COLORS: Record<string, string> = {
 };
 
 function TriggerNode({ data, selected }: NodeProps) {
-  const triggerType = data?.type as string || 'WEBHOOK';
+  const triggerType = (data?.type as string) || 'WEBHOOK';
   const color = TRIGGER_COLORS[triggerType] || '#8B5CF6';
   const Icon = TRIGGER_ICONS[triggerType] || Zap;
   const label = (data?.label as string) || triggerType;
@@ -49,9 +49,9 @@ function TriggerNode({ data, selected }: NodeProps) {
       {/* Body */}
       <div className="px-3 py-2">
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{label}</p>
-        {data?.description && (
-          <p className="text-xs text-gray-500 mt-0.5">{data.description as string}</p>
-        )}
+        {data?.description ? (
+          <p className="text-xs text-gray-500 mt-0.5">{String(data.description)}</p>
+        ) : null}
       </div>
 
       {/* Output handle */}

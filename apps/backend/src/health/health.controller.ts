@@ -32,7 +32,7 @@ export class HealthController {
   @ApiOperation({ summary: 'Readiness probe — checks DB and memory' })
   readiness() {
     return this.health.check([
-      () => this.prismaHealth.pingCheck('database', this.prisma),
+      () => this.prismaHealth.pingCheck('database', this.prisma as any),
       () => this.memory.checkHeap('memory_heap', 256 * 1024 * 1024), // 256MB
     ]);
   }

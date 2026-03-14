@@ -96,13 +96,13 @@ export class EmailTriggerService implements OnModuleDestroy {
       const emails: { from: string; subject: string; date: string; body: string }[] = [];
 
       imap.once('ready', () => {
-        imap.openBox('INBOX', false, (err) => {
+        imap.openBox('INBOX', false, (err: any) => {
           if (err) {
             imap.end();
             return reject(err);
           }
 
-          imap.search(['UNSEEN'], (err, uids) => {
+          imap.search(['UNSEEN'], (err: any, uids: any) => {
             if (err || !uids?.length) {
               imap.end();
               return resolve([]);
@@ -110,9 +110,9 @@ export class EmailTriggerService implements OnModuleDestroy {
 
             const fetch = imap.fetch(uids.slice(0, 10), { bodies: '', markSeen: true });
 
-            fetch.on('message', (msg) => {
+            fetch.on('message', (msg: any) => {
               let header = '';
-              msg.on('body', (stream) => {
+              msg.on('body', (stream: any) => {
                 stream.on('data', (chunk: Buffer) => {
                   header += chunk.toString('utf8');
                 });

@@ -60,7 +60,7 @@ export class ExecutionsService {
     const newExecution = await this.prisma.workflowExecution.create({
       data: {
         workflowId: execution.workflowId,
-        triggerData: execution.triggerData,
+        triggerData: execution.triggerData ?? undefined,
         status: 'PENDING',
       },
     });
