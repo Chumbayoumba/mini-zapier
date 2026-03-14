@@ -28,7 +28,7 @@ export interface Workflow {
 }
 
 export type WorkflowStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
-export type TriggerType = 'WEBHOOK' | 'CRON' | 'EMAIL';
+export type TriggerType = 'WEBHOOK' | 'CRON' | 'EMAIL' | 'TELEGRAM';
 export type ActionType = 'HTTP_REQUEST' | 'SEND_EMAIL' | 'TELEGRAM' | 'DATABASE' | 'TRANSFORM';
 export type ExecutionStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'PAUSED';
 export type StepStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';

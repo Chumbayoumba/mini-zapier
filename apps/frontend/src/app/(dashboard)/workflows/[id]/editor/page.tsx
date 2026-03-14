@@ -250,7 +250,7 @@ function EditorCanvas() {
         <EditorToolbar
           workflowId={workflowId}
           workflowName={workflow?.name}
-          workflowActive={workflow?.isActive}
+          workflowActive={workflow?.status === 'ACTIVE'}
           onSave={handleSave}
           onRun={handleRun}
           isSaving={updateWorkflow.isPending}
