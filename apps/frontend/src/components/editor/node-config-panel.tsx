@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { X, Settings2, Copy, Check } from 'lucide-react';
+import { X, Settings2, Copy, Check, Zap, MessageSquare, Reply } from 'lucide-react';
 
 interface ConfigField {
   key: string;
@@ -17,11 +17,12 @@ interface ConfigField {
   placeholder: string;
   type?: 'text' | 'password' | 'number';
   inputType?: 'input' | 'textarea' | 'select' | 'code';
-  options?: Array<{ value: string; label: string }>;
+  options?: Array<{ value: string; label: string; description?: string }>;
   required?: boolean;
   hint?: string;
   readOnly?: boolean;
   rows?: number;
+  hidden?: boolean;
 }
 
 const TRIGGER_FIELDS: Record<string, Array<ConfigField>> = {
@@ -42,13 +43,13 @@ const TRIGGER_FIELDS: Record<string, Array<ConfigField>> = {
   TELEGRAM: [
     { key: 'integrationId', label: 'Telegram Bot', placeholder: 'Select a bot...', inputType: 'select', required: true, options: [], hint: 'Go to Integrations to add a Telegram bot first' },
     { key: 'eventType', label: 'Event Type', placeholder: 'Select event...', inputType: 'select', required: true, options: [
-      { value: 'any', label: 'Any message' },
-      { value: 'message', label: 'Text message' },
-      { value: 'command_start', label: '/start command' },
-      { value: 'command_help', label: '/help command' },
-      { value: 'command', label: 'Any command' },
-      { value: 'callback_query', label: 'Callback query' },
-    ], hint: 'Type of Telegram event to trigger on' },
+      { value: 'command_start', label: '🚀 /start command' },
+      { value: 'command_help', label: '❓ /help command' },
+      { value: 'command', label: '⌨️ Any command (/, /help, /custom...)' },
+      { value: 'message', label: '💬 Text message (not commands)' },
+      { value: 'callback_query', label: '🔘 Button click (callback)' },
+      { value: 'any', label: '📨 Any event' },
+    ], hint: 'What type of message should trigger this workflow?' },
   ],
 };
 
@@ -78,10 +79,9 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
     ] },
   ],
   TELEGRAM: [
-    { key: 'integrationId', label: 'Telegram Bot', placeholder: 'Select a bot...', inputType: 'select', required: true, options: [], hint: 'Select from your integrations or enter token manually below' },
-    { key: 'botToken', label: 'Bot Token (manual)', placeholder: '123456:ABC-DEF1234...', type: 'password', hint: 'Only if not using an integration above. Get from @BotFather' },
-    { key: 'chatId', label: 'Chat ID', placeholder: '123456789', hint: 'Optional — auto-detected from Telegram trigger data' },
-    { key: 'message', label: 'Message', placeholder: '🔔 Alert: {{trigger.data}}', inputType: 'textarea', rows: 4, required: true, hint: 'Max 4096 characters. Supports {{template}} variables' },
+    { key: 'integrationId', label: 'Telegram Bot', placeholder: 'Select a bot...', inputType: 'select', required: true, options: [], hint: 'Select from your integrations' },
+    { key: 'chatId', label: 'Chat ID', placeholder: 'Auto from trigger', hint: 'Leave empty to reply to the user who triggered this workflow' },
+    { key: 'message', label: 'Message', placeholder: 'Привет, {{trigger.from.first_name}}! 👋\n\nДобро пожаловать!', inputType: 'textarea', rows: 4, required: true, hint: 'Supports {{template}} variables — see list below' },
     { key: 'parseMode', label: 'Parse Mode', inputType: 'select', placeholder: '', options: [
       { value: 'HTML', label: 'HTML' },
       { value: 'Markdown', label: 'Markdown' },
@@ -115,11 +115,30 @@ const CRON_EXAMPLES = [
   { expr: '0 9 * * 1-5', desc: 'Weekdays at 9:00' },
 ];
 
-export function NodeConfigPanel() {
-  const { selectedNode, updateNodeData, setSelectedNode } = useEditorStore();
-  const [copied, setCopied] = useState(false);
+// Template variables available from Telegram trigger
+const TELEGRAM_TEMPLATE_VARS = [
+  { var: '{{trigger.from.first_name}}', desc: 'Имя пользователя', example: 'Иван' },
+  { var: '{{trigger.from.username}}', desc: 'Username (@...)', example: 'ivan123' },
+  { var: '{{trigger.text}}', desc: 'Текст сообщения', example: '/start' },
+  { var: '{{trigger.chat.id}}', desc: 'ID чата', example: '123456789' },
+  { var: '{{trigger.command}}', desc: 'Команда (без /)', example: 'start' },
+  { var: '{{trigger.commandArgs}}', desc: 'Аргументы команды', example: 'arg1 arg2' },
+];
 
-  // Fetch integrations for Telegram trigger dropdown
+// Message templates for quick start
+const TELEGRAM_MESSAGE_TEMPLATES = [
+  { label: '👋 Приветствие /start', text: 'Привет, {{trigger.from.first_name}}! 👋\n\nЯ бот, созданный через Mini-Zapier.\nОтправь /help чтобы узнать что я умею.' },
+  { label: '❓ Ответ на /help', text: '📋 Доступные команды:\n\n/start — Начать\n/help — Помощь\n\nИли просто отправь мне сообщение!' },
+  { label: '💬 Эхо-ответ', text: 'Ты написал: {{trigger.text}}\n\nОтправитель: {{trigger.from.first_name}} (@{{trigger.from.username}})' },
+  { label: '🔔 Уведомление', text: '🔔 Новое сообщение от {{trigger.from.first_name}}:\n\n{{trigger.text}}' },
+];
+
+export function NodeConfigPanel() {
+  const { selectedNode, updateNodeData, setSelectedNode, nodes } = useEditorStore();
+  const [copied, setCopied] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  // Fetch integrations for Telegram dropdown
   const { data: integrations = [] } = useQuery<Array<{ id: string; name: string; type: string }>>({
     queryKey: ['integrations'],
     queryFn: async () => {
@@ -135,6 +154,11 @@ export function NodeConfigPanel() {
   const isTrigger = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(nodeType);
   let fields = isTrigger ? TRIGGER_FIELDS[nodeType] : ACTION_FIELDS[nodeType];
 
+  // Check if workflow has a Telegram trigger (for smart defaults in action)
+  const hasTelegramTrigger = nodes.some(
+    (n) => n.type === 'triggerNode' && (n.data?.type === 'TELEGRAM'),
+  );
+
   // Inject bot options into TELEGRAM trigger integrationId field
   if (nodeType === 'TELEGRAM' && isTrigger && fields) {
     const telegramBots = integrations.filter((i) => i.type === 'TELEGRAM');
@@ -144,8 +168,8 @@ export function NodeConfigPanel() {
             ...f,
             options: telegramBots.map((b) => ({ value: b.id, label: b.name })),
             hint: telegramBots.length === 0
-              ? 'No bots found. Go to Integrations page to add a Telegram bot.'
-              : 'Select the Telegram bot for this trigger',
+              ? '⚠️ Нет ботов. Перейдите в Интеграции → Добавить Telegram бота'
+              : 'Выберите бота для этого триггера',
           }
         : f,
     );
@@ -154,21 +178,22 @@ export function NodeConfigPanel() {
   // Inject bot options into TELEGRAM action integrationId field
   if (nodeType === 'TELEGRAM' && !isTrigger && fields) {
     const telegramBots = integrations.filter((i) => i.type === 'TELEGRAM');
-    fields = fields.map((f) =>
-      f.key === 'integrationId'
-        ? {
-            ...f,
-            options: [
-              { value: '', label: 'Manual token entry' },
-              ...telegramBots.map((b) => ({ value: b.id, label: b.name })),
-            ],
-            hint: telegramBots.length === 0
-              ? 'No bots found. Add one on Integrations page or enter token below.'
-              : 'Select bot from integrations (token will be used automatically)',
-          }
-        : f,
-    );
+    fields = fields.map((f) => {
+      if (f.key === 'integrationId') {
+        return {
+          ...f,
+          options: telegramBots.map((b) => ({ value: b.id, label: b.name })),
+          hint: telegramBots.length === 0
+            ? '⚠️ Нет ботов. Добавьте на странице Интеграции'
+            : hasTelegramTrigger
+              ? 'Выберите того же бота что и в триггере'
+              : 'Выберите бота для отправки сообщений',
+        };
+      }
+      return f;
+    });
   }
+
   const config = (selectedNode.data?.config as Record<string, string>) || {};
 
   // Auto-initialize select fields with first option when config is empty
@@ -193,6 +218,12 @@ export function NodeConfigPanel() {
     });
   };
 
+  const insertTemplate = (template: string) => {
+    const current = config['message'] || '';
+    const newText = current ? `${current}\n${template}` : template;
+    handleChange('message', newText);
+  };
+
   const webhookUrl = nodeType === 'WEBHOOK' && selectedNode.data?.triggerId
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/${selectedNode.data.triggerId}`
     : null;
@@ -204,15 +235,20 @@ export function NodeConfigPanel() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Check if this is a Telegram action connected to a Telegram trigger
+  const isTelegramAction = nodeType === 'TELEGRAM' && !isTrigger;
+
   return (
-    <div className="w-72 border-l bg-card overflow-y-auto shrink-0 animate-in slide-in-from-right duration-200">
+    <div className="w-80 border-l bg-card overflow-y-auto shrink-0 animate-in slide-in-from-right duration-200">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
           <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{selectedNode.data?.label as string}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{nodeType}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+              {isTrigger ? '⚡ Триггер' : '▶️ Действие'} · {nodeType}
+            </p>
           </div>
         </div>
         <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => setSelectedNode(null)}>
@@ -223,8 +259,8 @@ export function NodeConfigPanel() {
       <div className="p-4 space-y-4">
         {/* General section */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">General</p>
-          <label className="text-xs font-medium">Node Label</label>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Общее</p>
+          <label className="text-xs font-medium">Название ноды</label>
           <Input
             className="mt-1 h-8 text-sm"
             value={(selectedNode.data?.label as string) || ''}
@@ -249,12 +285,40 @@ export function NodeConfigPanel() {
           </div>
         )}
 
+        {/* Telegram Trigger: How it works info */}
+        {nodeType === 'TELEGRAM' && isTrigger && (
+          <div className="rounded-lg border border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30 p-3">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Zap className="h-3.5 w-3.5 text-sky-500" />
+              <p className="text-xs font-semibold text-sky-700 dark:text-sky-300">Как работает</p>
+            </div>
+            <p className="text-[11px] text-sky-600 dark:text-sky-400 leading-relaxed">
+              Выберите бота и тип события. Когда пользователь отправит боту сообщение 
+              соответствующего типа — workflow запустится автоматически.
+            </p>
+          </div>
+        )}
+
+        {/* Telegram Action: Auto-reply info */}
+        {isTelegramAction && hasTelegramTrigger && (
+          <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 p-3">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Reply className="h-3.5 w-3.5 text-green-500" />
+              <p className="text-xs font-semibold text-green-700 dark:text-green-300">Авто-ответ</p>
+            </div>
+            <p className="text-[11px] text-green-600 dark:text-green-400 leading-relaxed">
+              Chat ID определяется автоматически из триггера — бот ответит тому пользователю, 
+              который написал сообщение. Поле Chat ID можно оставить пустым.
+            </p>
+          </div>
+        )}
+
         {/* Configuration section */}
         {fields && fields.length > 0 && (
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Configuration</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Настройки</p>
             <div className="space-y-3">
-              {fields.map((field) => {
+              {fields.filter((f) => !f.hidden).map((field) => {
                 const value = config[field.key] || '';
                 const hasError = field.required && !value;
                 const isNumberErr = field.type === 'number' && value !== '' && isNaN(Number(value));
@@ -330,8 +394,76 @@ export function NodeConfigPanel() {
               </div>
             )}
 
-            {/* Template variables reference for action nodes */}
-            {!isTrigger && (
+            {/* Telegram trigger: Available data info */}
+            {nodeType === 'TELEGRAM' && isTrigger && (
+              <div className="mt-3 rounded-md bg-muted/50 p-2.5">
+                <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">
+                  📤 Данные триггера для Action-нод:
+                </p>
+                <div className="space-y-0.5 text-[10px] text-muted-foreground">
+                  <p><code className="font-mono text-primary">{'{{trigger.text}}'}</code> — текст сообщения</p>
+                  <p><code className="font-mono text-primary">{'{{trigger.chat.id}}'}</code> — ID чата</p>
+                  <p><code className="font-mono text-primary">{'{{trigger.from.first_name}}'}</code> — имя</p>
+                  <p><code className="font-mono text-primary">{'{{trigger.command}}'}</code> — команда</p>
+                </div>
+              </div>
+            )}
+
+            {/* Telegram action: Message templates */}
+            {isTelegramAction && (
+              <>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors"
+                    onClick={() => setShowTemplates(!showTemplates)}
+                  >
+                    <MessageSquare className="h-3 w-3" />
+                    {showTemplates ? 'Скрыть шаблоны' : '📝 Шаблоны сообщений'}
+                  </button>
+                  {showTemplates && (
+                    <div className="mt-2 space-y-1.5">
+                      {TELEGRAM_MESSAGE_TEMPLATES.map((tpl) => (
+                        <button
+                          key={tpl.label}
+                          type="button"
+                          className="flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-[11px] hover:bg-muted hover:border-border transition-colors"
+                          onClick={() => handleChange('message', tpl.text)}
+                        >
+                          <span className="font-medium shrink-0">{tpl.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Telegram template variables clickable */}
+                <div className="mt-3 rounded-md bg-muted/50 p-2.5">
+                  <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">
+                    🔗 Переменные (нажмите чтобы вставить):
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {TELEGRAM_TEMPLATE_VARS.map((v) => (
+                      <button
+                        key={v.var}
+                        type="button"
+                        className="inline-flex items-center rounded border bg-background px-1.5 py-0.5 font-mono text-[9px] text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                        title={`${v.desc} (пример: ${v.example})`}
+                        onClick={() => insertTemplate(v.var)}
+                      >
+                        {v.var.replace(/[{}]/g, '').replace('trigger.', '')}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-1.5">
+                    Нажмите на переменную — она добавится в поле Message
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Generic template variables reference for non-Telegram action nodes */}
+            {!isTrigger && !isTelegramAction && (
               <div className="mt-2 rounded-md bg-muted/50 p-2">
                 <p className="text-[10px] font-medium text-muted-foreground mb-1">
                   Template Variables
@@ -347,10 +479,10 @@ export function NodeConfigPanel() {
 
         {/* Notes section */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Notes</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Заметки</p>
           <Input
             className="h-8 text-sm"
-            placeholder="Optional description"
+            placeholder="Необязательное описание"
             value={(selectedNode.data?.description as string) || ''}
             onChange={(e) => updateNodeData(selectedNode.id, { description: e.target.value })}
           />
