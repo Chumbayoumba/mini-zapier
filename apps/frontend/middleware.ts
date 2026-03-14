@@ -7,7 +7,7 @@ const publicPaths = ['/login', '/register'];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (publicPaths.some((p) => pathname.startsWith(p))) {
+  if (pathname === '/' || publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
