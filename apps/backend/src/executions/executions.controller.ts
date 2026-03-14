@@ -14,13 +14,19 @@ export class ExecutionsController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'dateFrom', required: false, description: 'ISO date string filter (gte)' })
+  @ApiQuery({ name: 'dateTo', required: false, description: 'ISO date string filter (lte)' })
+  @ApiQuery({ name: 'workflowId', required: false, description: 'Filter by workflow ID' })
   async findAll(
     @CurrentUser('sub') userId: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('status') status?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('workflowId') workflowId?: string,
   ) {
-    return this.executionsService.findAllByUser(userId, page || 1, limit || 20, status);
+    return this.executionsService.findAllByUser(userId, page || 1, limit || 20, status, dateFrom, dateTo, workflowId);
   }
 
   @Get('stats')

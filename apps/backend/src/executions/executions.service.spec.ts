@@ -41,6 +41,7 @@ describe('ExecutionsService', () => {
         count: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        aggregate: jest.fn(),
       },
       executionStepLog: {
         deleteMany: jest.fn(),
@@ -158,6 +159,58 @@ describe('ExecutionsService', () => {
 
       expect(result.totalPages).toBe(4); // ceil(50/15)
     });
+
+    it('should filter by dateFrom and dateTo', async () => {
+      prisma.workflowExecution.findMany.mockResolvedValue([]);
+      prisma.workflowExecution.count.mockResolvedValue(0);
+
+      await service.findAllByUser(userId, 1, 20, undefined, '2024-01-01', '2024-01-31');
+
+      expect(prisma.workflowExecution.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            workflow: { userId },
+            createdAt: {
+              gte: new Date('2024-01-01'),
+              lte: new Date('2024-01-31'),
+            },
+          },
+        }),
+      );
+    });
+
+    it('should filter by workflowId', async () => {
+      prisma.workflowExecution.findMany.mockResolvedValue([]);
+      prisma.workflowExecution.count.mockResolvedValue(0);
+
+      await service.findAllByUser(userId, 1, 20, undefined, undefined, undefined, 'wf-123');
+
+      expect(prisma.workflowExecution.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            workflow: { userId },
+            workflowId: 'wf-123',
+          },
+        }),
+      );
+    });
+
+    it('should combine status and date filters', async () => {
+      prisma.workflowExecution.findMany.mockResolvedValue([]);
+      prisma.workflowExecution.count.mockResolvedValue(0);
+
+      await service.findAllByUser(userId, 1, 20, 'FAILED', '2024-01-01', undefined);
+
+      expect(prisma.workflowExecution.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            workflow: { userId },
+            status: 'FAILED',
+            createdAt: { gte: new Date('2024-01-01') },
+          },
+        }),
+      );
+    });
   });
 
   describe('findById', () => {
@@ -184,15 +237,17 @@ describe('ExecutionsService', () => {
   });
 
   describe('getStats', () => {
-    it('should return correct counts', async () => {
+    it('should return correct counts with new fields', async () => {
       prisma.workflowExecution.count
         .mockResolvedValueOnce(100) // total
         .mockResolvedValueOnce(80)  // completed
         .mockResolvedValueOnce(15)  // failed
-        .mockResolvedValueOnce(5);  // running
+        .mockResolvedValueOnce(5)   // running
+        .mockResolvedValueOnce(12); // executions24h
       prisma.workflow.count
         .mockResolvedValueOnce(10)  // totalWorkflows
         .mockResolvedValueOnce(7);  // activeWorkflows
+      prisma.workflowExecution.aggregate.mockResolvedValue({ _avg: { duration: 1500.5 } });
 
       const result = await service.getStats(userId);
 
@@ -203,12 +258,16 @@ describe('ExecutionsService', () => {
         running: 5,
         totalWorkflows: 10,
         activeWorkflows: 7,
+        executions24h: 12,
+        successRate: 80,
+        avgDuration: 1501,
       });
     });
 
     it('should use userId for all queries', async () => {
       prisma.workflowExecution.count.mockResolvedValue(0);
       prisma.workflow.count.mockResolvedValue(0);
+      prisma.workflowExecution.aggregate.mockResolvedValue({ _avg: { duration: null } });
 
       await service.getStats('specific-user');
 
@@ -223,6 +282,7 @@ describe('ExecutionsService', () => {
     it('should return zeros when no data', async () => {
       prisma.workflowExecution.count.mockResolvedValue(0);
       prisma.workflow.count.mockResolvedValue(0);
+      prisma.workflowExecution.aggregate.mockResolvedValue({ _avg: { duration: null } });
 
       const result = await service.getStats(userId);
 
@@ -233,7 +293,26 @@ describe('ExecutionsService', () => {
         running: 0,
         totalWorkflows: 0,
         activeWorkflows: 0,
+        executions24h: 0,
+        successRate: 0,
+        avgDuration: 0,
       });
+    });
+
+    it('should compute successRate correctly', async () => {
+      prisma.workflowExecution.count
+        .mockResolvedValueOnce(3)  // total
+        .mockResolvedValueOnce(1)  // completed
+        .mockResolvedValueOnce(2)  // failed
+        .mockResolvedValueOnce(0)  // running
+        .mockResolvedValueOnce(3); // executions24h
+      prisma.workflow.count.mockResolvedValue(1);
+      prisma.workflowExecution.aggregate.mockResolvedValue({ _avg: { duration: 200 } });
+
+      const result = await service.getStats(userId);
+
+      expect(result.successRate).toBe(33.3);
+      expect(result.avgDuration).toBe(200);
     });
   });
 

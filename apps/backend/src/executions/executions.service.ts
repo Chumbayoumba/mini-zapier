@@ -13,10 +13,16 @@ export class ExecutionsService {
     private queueService: QueueService,
   ) {}
 
-  async findAllByUser(userId: string, page = 1, limit = 20, status?: string) {
+  async findAllByUser(userId: string, page = 1, limit = 20, status?: string, dateFrom?: string, dateTo?: string, workflowId?: string) {
     const skip = (page - 1) * limit;
     const where: any = { workflow: { userId } };
     if (status) where.status = status;
+    if (workflowId) where.workflowId = workflowId;
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
 
     const [executions, total] = await Promise.all([
       this.prisma.workflowExecution.findMany({
@@ -138,6 +144,8 @@ export class ExecutionsService {
   }
 
   async getStats(userId: string) {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
     const [total, completed, failed, running] = await Promise.all([
       this.prisma.workflowExecution.count({ where: { workflow: { userId } } }),
       this.prisma.workflowExecution.count({ where: { workflow: { userId }, status: 'COMPLETED' } }),
@@ -145,10 +153,29 @@ export class ExecutionsService {
       this.prisma.workflowExecution.count({ where: { workflow: { userId }, status: 'RUNNING' } }),
     ]);
 
-    const totalWorkflows = await this.prisma.workflow.count({ where: { userId } });
-    const activeWorkflows = await this.prisma.workflow.count({ where: { userId, status: 'ACTIVE' } });
+    const [totalWorkflows, activeWorkflows, executions24h, avgResult] = await Promise.all([
+      this.prisma.workflow.count({ where: { userId } }),
+      this.prisma.workflow.count({ where: { userId, status: 'ACTIVE' } }),
+      this.prisma.workflowExecution.count({
+        where: { workflow: { userId }, createdAt: { gte: twentyFourHoursAgo } },
+      }),
+      this.prisma.workflowExecution.aggregate({
+        where: { workflow: { userId }, status: 'COMPLETED', duration: { not: null } },
+        _avg: { duration: true },
+      }),
+    ]);
 
-    return { totalExecutions: total, completed, failed, running, totalWorkflows, activeWorkflows };
+    return {
+      totalExecutions: total,
+      completed,
+      failed,
+      running,
+      totalWorkflows,
+      activeWorkflows,
+      executions24h,
+      successRate: Math.round((completed / Math.max(total, 1)) * 100 * 10) / 10,
+      avgDuration: Math.round(avgResult._avg.duration || 0),
+    };
   }
 
   async getRecentExecutions(userId: string, limit = 10) {

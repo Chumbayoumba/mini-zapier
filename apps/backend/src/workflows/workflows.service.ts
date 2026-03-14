@@ -26,19 +26,62 @@ export class WorkflowsService {
     return workflow;
   }
 
-  async findAllByUser(userId: string, page = 1, limit = 20) {
+  async findAllByUser(userId: string, page = 1, limit = 20, search?: string, statusFilter?: string) {
     const skip = (page - 1) * limit;
+    const where: any = { userId };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (statusFilter && statusFilter !== 'all') {
+      where.status = statusFilter === 'active' ? 'ACTIVE' : statusFilter === 'inactive' ? 'DRAFT' : statusFilter.toUpperCase();
+    }
+
     const [workflows, total] = await Promise.all([
       this.prisma.workflow.findMany({
-        where: { userId },
+        where,
         skip,
         take: limit,
-        include: { trigger: true, _count: { select: { executions: true } } },
+        include: {
+          trigger: true,
+          _count: { select: { executions: true } },
+          executions: {
+            select: { id: true, status: true, createdAt: true, duration: true },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+          },
+        },
         orderBy: { updatedAt: 'desc' },
       }),
-      this.prisma.workflow.count({ where: { userId } }),
+      this.prisma.workflow.count({ where }),
     ]);
-    return { workflows, total, page, totalPages: Math.ceil(total / limit) };
+
+    const enriched = workflows.map(({ executions, ...wf }: any) => {
+      const total = executions.length;
+      const completed = executions.filter((e: any) => e.status === 'COMPLETED').length;
+      const failed = executions.filter((e: any) => e.status === 'FAILED').length;
+      const lastExecution = executions[0] || null;
+      return {
+        ...wf,
+        executionStats: {
+          total,
+          completed,
+          failed,
+          successRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+        },
+        lastExecution: lastExecution ? {
+          id: lastExecution.id,
+          status: lastExecution.status,
+          createdAt: lastExecution.createdAt,
+          duration: lastExecution.duration,
+        } : null,
+      };
+    });
+
+    return { workflows: enriched, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: string, userId: string) {

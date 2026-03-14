@@ -27,13 +27,17 @@ export class WorkflowsController {
   @ApiOperation({ summary: 'List user workflows' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'search', required: false, description: 'Search by name or description' })
+  @ApiQuery({ name: 'status', required: false, enum: ['active', 'inactive', 'all'] })
   @ApiResponse({ status: 200, description: 'List of workflows' })
   async findAll(
     @CurrentUser('sub') userId: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
   ) {
-    return this.workflowsService.findAllByUser(userId, page || 1, limit || 20);
+    return this.workflowsService.findAllByUser(userId, page || 1, limit || 20, search, status);
   }
 
   @Get(':id')

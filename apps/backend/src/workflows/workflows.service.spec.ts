@@ -96,25 +96,38 @@ describe('WorkflowsService', () => {
   });
 
   describe('findAllByUser', () => {
-    it('should return paginated workflows', async () => {
-      prisma.workflow.findMany.mockResolvedValue([mockWorkflow]);
+    const mockWorkflowWithExecs = {
+      ...mockWorkflow,
+      executions: [
+        { id: 'ex-1', status: 'COMPLETED', createdAt: new Date(), duration: 1200 },
+        { id: 'ex-2', status: 'FAILED', createdAt: new Date(), duration: 500 },
+        { id: 'ex-3', status: 'COMPLETED', createdAt: new Date(), duration: 800 },
+      ],
+    };
+
+    it('should return paginated workflows with execution stats', async () => {
+      prisma.workflow.findMany.mockResolvedValue([mockWorkflowWithExecs]);
       prisma.workflow.count.mockResolvedValue(1);
 
       const result = await service.findAllByUser(userId, 1, 20);
 
-      expect(result).toEqual({
-        workflows: [mockWorkflow],
-        total: 1,
-        page: 1,
-        totalPages: 1,
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(1);
+      expect(result.totalPages).toBe(1);
+      expect(result.workflows[0].executionStats).toEqual({
+        total: 3,
+        completed: 2,
+        failed: 1,
+        successRate: 67,
       });
-      expect(prisma.workflow.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { userId },
-          skip: 0,
-          take: 20,
-        }),
-      );
+      expect(result.workflows[0].lastExecution).toEqual({
+        id: 'ex-1',
+        status: 'COMPLETED',
+        createdAt: expect.any(Date),
+        duration: 1200,
+      });
+      // executions array should NOT be in the result
+      expect(result.workflows[0]).not.toHaveProperty('executions');
     });
 
     it('should handle page 2', async () => {
@@ -128,6 +141,80 @@ describe('WorkflowsService', () => {
       expect(prisma.workflow.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ skip: 20, take: 20 }),
       );
+    });
+
+    it('should filter by search term', async () => {
+      prisma.workflow.findMany.mockResolvedValue([]);
+      prisma.workflow.count.mockResolvedValue(0);
+
+      await service.findAllByUser(userId, 1, 20, 'test query');
+
+      expect(prisma.workflow.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            userId,
+            OR: [
+              { name: { contains: 'test query', mode: 'insensitive' } },
+              { description: { contains: 'test query', mode: 'insensitive' } },
+            ],
+          },
+        }),
+      );
+    });
+
+    it('should filter by active status', async () => {
+      prisma.workflow.findMany.mockResolvedValue([]);
+      prisma.workflow.count.mockResolvedValue(0);
+
+      await service.findAllByUser(userId, 1, 20, undefined, 'active');
+
+      expect(prisma.workflow.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId, status: 'ACTIVE' },
+        }),
+      );
+    });
+
+    it('should filter by inactive status', async () => {
+      prisma.workflow.findMany.mockResolvedValue([]);
+      prisma.workflow.count.mockResolvedValue(0);
+
+      await service.findAllByUser(userId, 1, 20, undefined, 'inactive');
+
+      expect(prisma.workflow.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId, status: 'DRAFT' },
+        }),
+      );
+    });
+
+    it('should not filter status when "all" is passed', async () => {
+      prisma.workflow.findMany.mockResolvedValue([]);
+      prisma.workflow.count.mockResolvedValue(0);
+
+      await service.findAllByUser(userId, 1, 20, undefined, 'all');
+
+      expect(prisma.workflow.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId },
+        }),
+      );
+    });
+
+    it('should handle workflow with no executions', async () => {
+      const wfNoExecs = { ...mockWorkflow, executions: [] };
+      prisma.workflow.findMany.mockResolvedValue([wfNoExecs]);
+      prisma.workflow.count.mockResolvedValue(1);
+
+      const result = await service.findAllByUser(userId);
+
+      expect(result.workflows[0].executionStats).toEqual({
+        total: 0,
+        completed: 0,
+        failed: 0,
+        successRate: 0,
+      });
+      expect(result.workflows[0].lastExecution).toBeNull();
     });
   });
 
