@@ -1,0 +1,151 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum TriggerType {
+  WEBHOOK
+  CRON
+  EMAIL
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  PAUSED
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          UserRole  @default(USER)
+  refreshToken  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  workflows     Workflow[]
+
+  @@map("users")
+}
+
+model Workflow {
+  id          String          @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  status      WorkflowStatus  @default(DRAFT)
+  version     Int             @default(1)
+  definition  Json            @default("{\"nodes\":[],\"edges\":[]}")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trigger     Trigger?
+  versions    WorkflowVersion[]
+  executions  WorkflowExecution[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("workflows")
+}
+
+model WorkflowVersion {
+  id          String   @id @default(cuid())
+  workflowId  String
+  version     Int
+  definition  Json
+  changelog   String?
+  createdAt   DateTime @default(now())
+
+  workflow    Workflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, version])
+  @@index([workflowId])
+  @@map("workflow_versions")
+}
+
+model Trigger {
+  id          String      @id @default(cuid())
+  workflowId  String      @unique
+  type        TriggerType
+  config      Json        @default("{}")
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  workflow    Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([type])
+  @@map("triggers")
+}
+
+model WorkflowExecution {
+  id          String          @id @default(cuid())
+  workflowId  String
+  triggerData Json?
+  status      ExecutionStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+  error       String?
+  duration    Int?
+  createdAt   DateTime        @default(now())
+
+  workflow    Workflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  stepLogs    ExecutionStepLog[]
+
+  @@index([workflowId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("workflow_executions")
+}
+
+model ExecutionStepLog {
+  id            String     @id @default(cuid())
+  executionId   String
+  nodeId        String
+  nodeName      String
+  nodeType      String
+  status        StepStatus @default(PENDING)
+  input         Json?
+  output        Json?
+  error         String?
+  retryCount    Int        @default(0)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  duration      Int?
+
+  execution     WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@index([status])
+  @@map("execution_step_logs")
+}

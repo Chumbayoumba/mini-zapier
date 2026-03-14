@@ -1,0 +1,27 @@
+{
+  "name": "minizapier",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mini-Zapier — Workflow Automation Platform",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:cov": "turbo run test:cov",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "db:migrate": "pnpm --filter backend prisma migrate dev",
+    "db:seed": "pnpm --filter backend prisma db seed",
+    "db:studio": "pnpm --filter backend prisma studio",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "prettier": "^3.4.0",
+    "rimraf": "^6.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

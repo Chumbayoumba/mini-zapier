@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Turbo
+.turbo/
+
+# Testing
+coverage/
+
+# Prisma
+apps/backend/prisma/migrations/**/migration_lock.toml
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
