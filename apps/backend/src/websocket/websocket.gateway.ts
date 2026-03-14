@@ -55,6 +55,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
       });
 
       client.data.userId = payload.sub;
+      client.join(`user:${payload.sub}`);
       this.logger.log(`Client connected: ${client.id} (user: ${payload.sub})`);
     } catch {
       this.logger.warn(`Client ${client.id} rejected: invalid token`);
@@ -110,6 +111,15 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
     const room = `execution:${executionId}`;
     this.server?.to(room).emit(event, payload);
     this.server?.emit(event, payload); // broadcast for dashboard
+  }
+
+  private emitToUser(userId: string, event: string, payload: any) {
+    this.server?.to(`user:${userId}`).emit(event, payload);
+  }
+
+  @OnEvent('notification.send')
+  handleNotificationSend(payload: { userId: string; event: string; data: any }) {
+    this.emitToUser(payload.userId, payload.event, payload.data);
   }
 
   @OnEvent('execution.started')

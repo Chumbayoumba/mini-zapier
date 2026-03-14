@@ -47,6 +47,13 @@ export class EngineService {
       integrations,
     };
 
+    this.logger.log({
+      msg: 'Starting workflow execution',
+      correlationId: (execution as any).correlationId || undefined,
+      workflowId,
+      executionId: execution.id,
+    });
+
     this.eventEmitter.emit('execution.started', { executionId: execution.id, workflowId });
 
     try {
@@ -264,6 +271,14 @@ export class EngineService {
       nodeId: node.id,
     });
 
+    this.logger.log({
+      msg: `Executing step ${node.id}`,
+      correlationId: context.correlationId,
+      nodeId: node.id,
+      actionType: node.data.type,
+      executionId: context.executionId,
+    });
+
     const { maxAttempts, baseDelayMs, maxDelayMs, jitter } = retryConfig;
     let lastError: Error | null = null;
 
@@ -298,6 +313,15 @@ export class EngineService {
           stepId: stepLog.id,
           nodeId: node.id,
           result,
+        });
+
+        this.logger.log({
+          msg: `Step ${node.id} completed`,
+          correlationId: context.correlationId,
+          nodeId: node.id,
+          actionType: node.data.type,
+          executionId: context.executionId,
+          duration: completedAt.getTime() - startedAt.getTime(),
         });
 
         return result;
@@ -340,6 +364,16 @@ export class EngineService {
       stepId: stepLog.id,
       nodeId: node.id,
       error: lastError!.message,
+    });
+
+    this.logger.error({
+      msg: `Step ${node.id} failed after ${maxAttempts} attempts`,
+      correlationId: context.correlationId,
+      nodeId: node.id,
+      actionType: node.data.type,
+      executionId: context.executionId,
+      error: lastError!.message,
+      errorStack: lastError!.stack,
     });
 
     throw lastError!;

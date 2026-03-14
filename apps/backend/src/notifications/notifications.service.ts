@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import * as nodemailer from 'nodemailer';
+import { PrismaService } from '../prisma/prisma.service';
+import { DEFAULT_ERROR_CONFIG, WorkflowErrorConfig } from '../engine/execution-context';
 
 interface ExecutionPayload {
   executionId: string;
@@ -20,7 +23,11 @@ export class NotificationsService {
   private alertChatId: string;
   private alertEmail: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+    private eventEmitter: EventEmitter2,
+  ) {
     this.telegramBotToken = this.configService.get('TELEGRAM_BOT_TOKEN') || '';
     this.alertChatId = this.configService.get('TELEGRAM_ALERT_CHAT_ID') || '';
     this.alertEmail = this.configService.get('ALERT_EMAIL') || '';
@@ -48,8 +55,49 @@ export class NotificationsService {
   async handleExecutionFailed(payload: ExecutionPayload) {
     this.logger.warn(`Execution failed: ${payload.executionId} — ${payload.error}`);
 
+    // Load workflow with owner info and error config
+    const execution = await this.prisma.workflowExecution.findUnique({
+      where: { id: payload.executionId },
+      include: {
+        workflow: {
+          include: { user: { select: { id: true, email: true, name: true } } },
+        },
+      },
+    });
+
+    if (!execution) return;
+
+    const errorConfig: WorkflowErrorConfig =
+      (execution.workflow.errorConfig as any) || DEFAULT_ERROR_CONFIG;
+    const owner = execution.workflow.user;
+    const workflowName = execution.workflow.name;
+
+    // 1. In-app notification via WebSocket (default: true)
+    if (errorConfig.notifications.inApp) {
+      this.eventEmitter.emit('notification.send', {
+        userId: owner.id,
+        event: 'execution:failed',
+        data: {
+          executionId: payload.executionId,
+          workflowId: payload.workflowId,
+          workflowName,
+          error: payload.error,
+        },
+      });
+    }
+
+    // 2. Email to workflow owner (if configured)
+    if (errorConfig.notifications.email) {
+      const emailTo = errorConfig.notifications.emailAddress || owner.email;
+      const subject = `[MiniZapier] Workflow Failed: ${workflowName}`;
+      const body = `Workflow "${workflowName}" execution ${payload.executionId} failed.\n\nError: ${payload.error || 'Unknown error'}`;
+      await this.sendEmailNotification(emailTo, subject, body);
+    }
+
+    // 3. Global admin notifications (Telegram + email to admin — keep existing behavior)
     const message = `🚨 <b>Workflow Failed</b>\n\n`
-      + `<b>Workflow:</b> ${payload.workflowName || payload.workflowId}\n`
+      + `<b>Workflow:</b> ${workflowName || payload.workflowId}\n`
+      + `<b>Owner:</b> ${owner.name} (${owner.email})\n`
       + `<b>Execution:</b> ${payload.executionId}\n`
       + `<b>Error:</b> ${payload.error || 'Unknown error'}`;
 
@@ -63,7 +111,7 @@ export class NotificationsService {
       promises.push(
         this.sendEmailNotification(
           this.alertEmail,
-          `[MiniZapier] Workflow Failed: ${payload.workflowName || payload.workflowId}`,
+          `[MiniZapier] Workflow Failed: ${workflowName}`,
           message.replace(/<[^>]+>/g, ''),
         ),
       );
