@@ -29,13 +29,19 @@ export class DatabaseAction implements ActionHandler {
   constructor(private prisma: PrismaService) {}
 
   async execute(config: DatabaseConfig): Promise<any> {
-    const { operation = 'RAW' } = config;
+    const { operation } = config;
+
+    if (!operation) {
+      throw new BadRequestException(
+        "Database operation is required. Specify one of: 'SELECT'. Other operations are blocked for security.",
+      );
+    }
 
     this.logger.log(`Executing DB ${operation} operation`);
 
     if (operation !== 'SELECT') {
       throw new BadRequestException(
-        'Only SELECT operations are allowed for security. Use the API for data mutations.',
+        `Operation '${operation}' is not allowed. Only SELECT operations are permitted for security. Use the API for data mutations.`,
       );
     }
 
@@ -62,6 +68,12 @@ export class DatabaseAction implements ActionHandler {
     if (!where || Object.keys(where).length === 0) return { clause: '', params: [] };
     const keys = Object.keys(where);
     keys.forEach((k) => this.validateColumnName(k));
+    // Reject null/undefined values in WHERE params
+    for (const k of keys) {
+      if (where[k] === null || where[k] === undefined) {
+        throw new BadRequestException(`WHERE parameter '${k}' cannot be null or undefined`);
+      }
+    }
     const clause = keys.map((k, i) => `"${k}" = $${paramOffset + i + 1}`).join(' AND ');
     return { clause: `WHERE ${clause}`, params: keys.map((k) => where[k]) };
   }

@@ -34,6 +34,99 @@ import * as dns from 'dns/promises';
 const mockResolve4 = dns.resolve4 as jest.MockedFunction<typeof dns.resolve4>;
 const mockResolve6 = dns.resolve6 as jest.MockedFunction<typeof dns.resolve6>;
 
+// Get mock axios for direct access
+import axios from 'axios';
+const mockAxiosCreate = (axios as any).create || (axios as any).default?.create;
+
+describe('HttpRequestAction — Input Validation', () => {
+  let action: HttpRequestAction;
+
+  beforeEach(() => {
+    action = new HttpRequestAction();
+    jest.clearAllMocks();
+  });
+
+  it('should reject missing URL', async () => {
+    await expect(action.execute({ method: 'GET' }))
+      .rejects.toThrow(BadRequestException);
+  });
+
+  it('should reject non-string URL', async () => {
+    await expect(action.execute({ url: 123 }))
+      .rejects.toThrow(BadRequestException);
+  });
+
+  it('should reject invalid HTTP method', async () => {
+    await expect(action.execute({ url: 'http://8.8.8.8/test', method: 'TRACE' }))
+      .rejects.toThrow(/Invalid HTTP method/);
+  });
+
+  it('should accept all valid HTTP methods', async () => {
+    for (const method of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD']) {
+      const result = await action.execute({ url: `http://8.8.8.8/test`, method });
+      expect(result.status).toBe(200);
+    }
+  });
+});
+
+describe('HttpRequestAction — Headers/Body Parsing', () => {
+  let action: HttpRequestAction;
+
+  beforeEach(() => {
+    action = new HttpRequestAction();
+    jest.clearAllMocks();
+  });
+
+  it('should parse string headers as JSON', async () => {
+    const result = await action.execute({
+      url: 'http://8.8.8.8/test',
+      method: 'GET',
+      headers: '{"Content-Type":"application/json"}',
+    });
+    expect(result.status).toBe(200);
+  });
+
+  it('should reject invalid JSON string headers', async () => {
+    await expect(
+      action.execute({ url: 'http://8.8.8.8/test', headers: 'not-json' }),
+    ).rejects.toThrow(/Headers must be a valid JSON/);
+  });
+
+  it('should parse string body as JSON when valid', async () => {
+    const result = await action.execute({
+      url: 'http://8.8.8.8/test',
+      method: 'POST',
+      body: '{"key":"value"}',
+    });
+    expect(result.status).toBe(200);
+  });
+
+  it('should keep body as string when not valid JSON', async () => {
+    const result = await action.execute({
+      url: 'http://8.8.8.8/test',
+      method: 'POST',
+      body: 'plain text body',
+    });
+    expect(result.status).toBe(200);
+  });
+});
+
+describe('HttpRequestAction — Response Size Limit', () => {
+  let action: HttpRequestAction;
+
+  beforeEach(() => {
+    action = new HttpRequestAction();
+    jest.clearAllMocks();
+  });
+
+  it('should set maxContentLength and maxBodyLength on axios client', async () => {
+    await action.execute({ url: 'http://8.8.8.8/test', method: 'GET' });
+    const createCall = mockAxiosCreate.mock.calls[0][0];
+    expect(createCall).toHaveProperty('maxContentLength', 10 * 1024 * 1024);
+    expect(createCall).toHaveProperty('maxBodyLength', 10 * 1024 * 1024);
+  });
+});
+
 describe('HttpRequestAction — SSRF Protection', () => {
   let action: HttpRequestAction;
 

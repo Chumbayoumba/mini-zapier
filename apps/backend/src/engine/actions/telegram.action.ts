@@ -1,6 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import axios from 'axios';
 import { ActionHandler } from '../action-handler.interface';
+
+const ALLOWED_PARSE_MODES = ['HTML', 'Markdown', 'MarkdownV2'];
+const MAX_MESSAGE_LENGTH = 4096;
 
 @Injectable()
 export class TelegramAction implements ActionHandler {
@@ -17,13 +20,31 @@ export class TelegramAction implements ActionHandler {
     const targetChatId = chatId
       || _context?.triggerData?.chat?.id
       || _context?.triggerData?.message?.chat?.id;
-    const text = this.interpolateMessage(message || 'Hello!', _context);
+    const text = message || 'Hello!';
 
     if (!token) {
-      throw new Error('Telegram bot token is required. Configure it in the node settings.');
+      throw new BadRequestException('Telegram bot token is required. Configure it in the node settings.');
     }
     if (!targetChatId) {
-      throw new Error('Chat ID is required. Configure it in the node settings or use a Telegram trigger.');
+      throw new BadRequestException('Chat ID is required. Configure it in the node settings or use a Telegram trigger.');
+    }
+
+    // chatId must be numeric (can be negative for groups)
+    const chatIdNum = Number(targetChatId);
+    if (!Number.isFinite(chatIdNum)) {
+      throw new BadRequestException(`Invalid chat ID '${targetChatId}': must be a numeric value`);
+    }
+
+    if (typeof text === 'string' && text.length > MAX_MESSAGE_LENGTH) {
+      throw new BadRequestException(
+        `Message exceeds Telegram limit of ${MAX_MESSAGE_LENGTH} characters (got ${text.length})`,
+      );
+    }
+
+    if (!ALLOWED_PARSE_MODES.includes(parseMode)) {
+      throw new BadRequestException(
+        `Invalid parseMode '${parseMode}'. Allowed: ${ALLOWED_PARSE_MODES.join(', ')}`,
+      );
     }
 
     this.logger.log(`Sending Telegram message to chat ${targetChatId}`);
@@ -52,17 +73,5 @@ export class TelegramAction implements ActionHandler {
         `Telegram sending failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  }
-
-  private interpolateMessage(template: string, context: any): string {
-    if (!context) return template;
-    return template.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (_, path: string) => {
-      const parts = path.split('.');
-      let value: any = context;
-      for (const part of parts) {
-        value = value?.[part];
-      }
-      return value !== undefined && value !== null ? String(value) : `{{${path}}}`;
-    });
   }
 }

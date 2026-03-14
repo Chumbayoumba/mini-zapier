@@ -11,12 +11,51 @@ export class HttpRequestAction implements ActionHandler {
   readonly type = 'HTTP_REQUEST';
   private readonly logger = new Logger(HttpRequestAction.name);
 
+  private static readonly ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD'];
+  private static readonly MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10 MB
+
   async execute(config: any): Promise<any> {
     const { url, method = 'GET', headers = {}, body, timeout = 30000, retries = 3 } = config;
 
+    if (!url || typeof url !== 'string') {
+      throw new BadRequestException('URL is required and must be a string');
+    }
+
+    const upperMethod = String(method).toUpperCase();
+    if (!HttpRequestAction.ALLOWED_METHODS.includes(upperMethod)) {
+      throw new BadRequestException(
+        `Invalid HTTP method '${method}'. Allowed: ${HttpRequestAction.ALLOWED_METHODS.join(', ')}`,
+      );
+    }
+
     await this.validateUrl(url);
 
-    const client = axios.create({ timeout, maxRedirects: 0 });
+    // Parse string headers as JSON
+    let parsedHeaders = headers;
+    if (typeof headers === 'string') {
+      try {
+        parsedHeaders = JSON.parse(headers);
+      } catch {
+        throw new BadRequestException('Headers must be a valid JSON object');
+      }
+    }
+
+    // Parse string body as JSON, keep as string if invalid JSON (plain text)
+    let parsedBody = body;
+    if (typeof body === 'string') {
+      try {
+        parsedBody = JSON.parse(body);
+      } catch {
+        // keep as plain text string
+      }
+    }
+
+    const client = axios.create({
+      timeout,
+      maxRedirects: 0,
+      maxContentLength: HttpRequestAction.MAX_RESPONSE_SIZE,
+      maxBodyLength: HttpRequestAction.MAX_RESPONSE_SIZE,
+    });
     axiosRetry(client, {
       retries,
       retryDelay: axiosRetry.exponentialDelay,
@@ -25,13 +64,13 @@ export class HttpRequestAction implements ActionHandler {
       },
     });
 
-    this.logger.log(`HTTP ${method} ${url}`);
+    this.logger.log(`HTTP ${upperMethod} ${url}`);
 
     const response = await client({
-      method,
+      method: upperMethod,
       url,
-      headers,
-      data: body,
+      headers: parsedHeaders,
+      data: parsedBody,
     });
 
     return {
