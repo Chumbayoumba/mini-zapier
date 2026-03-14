@@ -20,4 +20,9 @@ export const validationSchema = Joi.object({
   IMAP_USER: Joi.string().optional(),
   IMAP_PASSWORD: Joi.string().optional(),
   FRONTEND_URL: Joi.string().default('http://localhost:3000'),
+  CREDENTIAL_ENCRYPTION_KEY: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().required(),
+    otherwise: Joi.string().optional().allow(''),
+  }),
 });
