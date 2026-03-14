@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io, Socket } from 'socket.io-client';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || '';
 
 interface UseWebSocketOptions {
   namespace?: string;
@@ -21,7 +21,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-    const socket = io(`${WS_URL}${namespace}`, {
+    const wsUrl = WS_URL ? `${WS_URL}${namespace}` : namespace;
+    const socket = io(wsUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
