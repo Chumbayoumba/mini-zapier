@@ -36,6 +36,7 @@ const TRIGGER_TYPES = [
   { type: 'WEBHOOK', label: 'Webhook', color: '#8B5CF6', icon: '🔗' },
   { type: 'CRON', label: 'Schedule', color: '#F59E0B', icon: '⏰' },
   { type: 'EMAIL', label: 'Email', color: '#EF4444', icon: '📧' },
+  { type: 'TELEGRAM', label: 'Telegram', color: '#0EA5E9', icon: '💬' },
 ];
 
 const ACTION_TYPES = [
@@ -156,7 +157,7 @@ function EditorCanvas() {
       if (!type) return;
 
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      const isTrigger = ['WEBHOOK', 'CRON', 'EMAIL'].includes(type);
+      const isTrigger = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(type);
 
       if (isTrigger) {
         const currentTriggers = countTriggerNodes(useEditorStore.getState().nodes);

@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CronService } from './cron/cron.service';
+import { TelegramTriggerService } from './telegram/telegram-trigger.service';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -11,7 +13,17 @@ export class TriggersService {
   constructor(
     private prisma: PrismaService,
     private cronService: CronService,
+    private telegramTriggerService: TelegramTriggerService,
+    private configService: ConfigService,
   ) {}
+
+  private getBaseUrl(): string {
+    return (
+      this.configService.get('BASE_URL') ||
+      this.configService.get('FRONTEND_URL') ||
+      'https://zapier.egor-dev.ru'
+    );
+  }
 
   @OnEvent('workflow.activated')
   async handleActivated({ workflowId }: { workflowId: string }) {
@@ -21,7 +33,7 @@ export class TriggersService {
     const definition = workflow.definition as any;
     const nodes = definition?.nodes || [];
     const triggerNode = nodes.find((n: any) =>
-      n.type === 'triggerNode' || ['WEBHOOK', 'CRON', 'EMAIL'].includes(n.data?.type),
+      n.type === 'triggerNode' || ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(n.data?.type),
     );
     if (!triggerNode) return;
 
@@ -48,6 +60,13 @@ export class TriggersService {
       this.cronService.scheduleCron(trigger.id, config, workflowId);
     }
 
+    if (triggerType === 'TELEGRAM' && config.integrationId) {
+      await this.telegramTriggerService.registerWebhook(
+        config.integrationId,
+        this.getBaseUrl(),
+      );
+    }
+
     this.logger.log(`Trigger synced for workflow ${workflowId}: ${triggerType}`);
   }
 
@@ -65,6 +84,13 @@ export class TriggersService {
       this.cronService.stopCron(trigger.id);
     }
 
+    if (trigger.type === 'TELEGRAM') {
+      const config = trigger.config as any;
+      if (config?.integrationId) {
+        await this.telegramTriggerService.removeWebhook(config.integrationId);
+      }
+    }
+
     this.logger.log(`Trigger deactivated for workflow ${workflowId}`);
   }
 
@@ -76,7 +102,7 @@ export class TriggersService {
     const definition = workflow.definition as any;
     const nodes = definition?.nodes || [];
     const triggerNode = nodes.find((n: any) =>
-      n.type === 'triggerNode' || ['WEBHOOK', 'CRON', 'EMAIL'].includes(n.data?.type),
+      n.type === 'triggerNode' || ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(n.data?.type),
     );
     if (!triggerNode) return;
 
@@ -95,6 +121,22 @@ export class TriggersService {
       this.cronService.stopCron(trigger.id);
       if (trigger.isActive && triggerType === 'CRON') {
         this.cronService.scheduleCron(trigger.id, config, workflowId);
+      }
+    }
+
+    // Handle Telegram webhook updates
+    if (trigger.isActive) {
+      if (trigger.type === 'TELEGRAM' && triggerType !== 'TELEGRAM') {
+        const oldConfig = trigger.config as any;
+        if (oldConfig?.integrationId) {
+          await this.telegramTriggerService.removeWebhook(oldConfig.integrationId);
+        }
+      }
+      if (triggerType === 'TELEGRAM' && config.integrationId) {
+        await this.telegramTriggerService.registerWebhook(
+          config.integrationId,
+          this.getBaseUrl(),
+        );
       }
     }
 

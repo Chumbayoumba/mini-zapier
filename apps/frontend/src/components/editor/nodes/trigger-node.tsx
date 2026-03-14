@@ -6,6 +6,7 @@ import {
   Webhook,
   Clock,
   Mail,
+  Send,
   Zap,
 } from 'lucide-react';
 
@@ -13,12 +14,14 @@ const TRIGGER_ICONS: Record<string, any> = {
   WEBHOOK: Webhook,
   CRON: Clock,
   EMAIL: Mail,
+  TELEGRAM: Send,
 };
 
 const TRIGGER_COLORS: Record<string, string> = {
   WEBHOOK: '#8B5CF6',
   CRON: '#F59E0B',
   EMAIL: '#EF4444',
+  TELEGRAM: '#0EA5E9',
 };
 
 function TriggerNode({ data, selected }: NodeProps) {

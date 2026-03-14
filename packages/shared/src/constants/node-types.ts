@@ -19,6 +19,12 @@ export const TRIGGER_NODE_TYPES = {
     color: '#EF4444',
     icon: 'mail',
   },
+  [TriggerType.TELEGRAM]: {
+    label: 'Telegram',
+    description: 'Triggered by Telegram message',
+    color: '#0EA5E9',
+    icon: 'send',
+  },
 } as const;
 
 export const ACTION_NODE_TYPES = {

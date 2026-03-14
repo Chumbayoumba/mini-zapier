@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/api';
 import { useEditorStore } from '@/stores/editor-store';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -36,6 +38,17 @@ const TRIGGER_FIELDS: Record<string, Array<ConfigField>> = {
     { key: 'imapUser', label: 'IMAP Username', placeholder: 'user@gmail.com', required: true },
     { key: 'imapPassword', label: 'IMAP Password', placeholder: '••••••••', type: 'password', required: true },
     { key: 'filter', label: 'Subject Filter (optional)', placeholder: 'Order*' },
+  ],
+  TELEGRAM: [
+    { key: 'integrationId', label: 'Telegram Bot', placeholder: 'Select a bot...', inputType: 'select', required: true, options: [], hint: 'Go to Integrations to add a Telegram bot first' },
+    { key: 'eventType', label: 'Event Type', placeholder: 'Select event...', inputType: 'select', required: true, options: [
+      { value: 'any', label: 'Any message' },
+      { value: 'message', label: 'Text message' },
+      { value: 'command_start', label: '/start command' },
+      { value: 'command_help', label: '/help command' },
+      { value: 'command', label: 'Any command' },
+      { value: 'callback_query', label: 'Callback query' },
+    ], hint: 'Type of Telegram event to trigger on' },
   ],
 };
 
@@ -105,11 +118,37 @@ export function NodeConfigPanel() {
   const { selectedNode, updateNodeData, setSelectedNode } = useEditorStore();
   const [copied, setCopied] = useState(false);
 
+  // Fetch integrations for Telegram trigger dropdown
+  const { data: integrations = [] } = useQuery<Array<{ id: string; name: string; type: string }>>({
+    queryKey: ['integrations'],
+    queryFn: async () => {
+      const res = await api.get('/integrations');
+      return res.data.data || res.data;
+    },
+    staleTime: 30000,
+  });
+
   if (!selectedNode) return null;
 
   const nodeType = selectedNode.data?.type as string;
-  const isTrigger = ['WEBHOOK', 'CRON', 'EMAIL'].includes(nodeType);
-  const fields = isTrigger ? TRIGGER_FIELDS[nodeType] : ACTION_FIELDS[nodeType];
+  const isTrigger = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(nodeType);
+  let fields = isTrigger ? TRIGGER_FIELDS[nodeType] : ACTION_FIELDS[nodeType];
+
+  // Inject bot options into TELEGRAM trigger integrationId field
+  if (nodeType === 'TELEGRAM' && isTrigger && fields) {
+    const telegramBots = integrations.filter((i) => i.type === 'TELEGRAM');
+    fields = fields.map((f) =>
+      f.key === 'integrationId'
+        ? {
+            ...f,
+            options: telegramBots.map((b) => ({ value: b.id, label: b.name })),
+            hint: telegramBots.length === 0
+              ? 'No bots found. Go to Integrations page to add a Telegram bot.'
+              : 'Select the Telegram bot for this trigger',
+          }
+        : f,
+    );
+  }
   const config = (selectedNode.data?.config as Record<string, string>) || {};
 
   const handleChange = (key: string, value: string) => {

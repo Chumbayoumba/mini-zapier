@@ -10,6 +10,7 @@ export enum TriggerType {
   WEBHOOK = 'WEBHOOK',
   CRON = 'CRON',
   EMAIL = 'EMAIL',
+  TELEGRAM = 'TELEGRAM',
 }
 
 export enum ActionType {
