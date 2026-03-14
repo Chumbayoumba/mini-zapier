@@ -28,7 +28,7 @@ describe('WebhookController', () => {
       const token = 'abc-123';
       const body = { event: 'push', data: { id: 1 } };
       const headers = { 'content-type': 'application/json', 'x-custom': 'value' };
-      const expected = { executionId: 'exec-1', status: 'triggered' };
+      const expected = { jobId: 'exec-1', status: 'triggered' };
 
       webhookService.processWebhook.mockResolvedValue(expected);
 
@@ -40,7 +40,7 @@ describe('WebhookController', () => {
 
     it('should pass empty body correctly', async () => {
       webhookService.processWebhook.mockResolvedValue({
-        executionId: 'exec-2',
+        jobId: 'exec-2',
         status: 'triggered',
       });
 
@@ -64,7 +64,7 @@ describe('WebhookController', () => {
         metadata: { source: 'github' },
       };
       webhookService.processWebhook.mockResolvedValue({
-        executionId: 'exec-3',
+        jobId: 'exec-3',
         status: 'triggered',
       });
 

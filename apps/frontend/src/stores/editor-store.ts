@@ -12,7 +12,8 @@ import {
 } from '@xyflow/react';
 
 // Simple throttle utility
-function throttle<T extends (...args: unknown[]) => unknown>(fn: T, ms: number): T {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function throttle<T extends (...args: any[]) => any>(fn: T, ms: number): T {
   let lastCall = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   return ((...args: unknown[]) => {

@@ -42,12 +42,17 @@ export class WorkflowsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get workflow by ID' })
+  @ApiResponse({ status: 200, description: 'Workflow details' })
+  @ApiResponse({ status: 404, description: 'Workflow not found' })
   async findOne(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.workflowsService.findById(id, userId);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update workflow' })
+  @ApiResponse({ status: 200, description: 'Workflow updated successfully' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Workflow not found' })
   async update(
     @Param('id') id: string,
     @CurrentUser('sub') userId: string,
@@ -58,18 +63,24 @@ export class WorkflowsController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete workflow' })
+  @ApiResponse({ status: 200, description: 'Workflow deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Workflow not found' })
   async remove(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.workflowsService.delete(id, userId);
   }
 
   @Post(':id/activate')
   @ApiOperation({ summary: 'Activate workflow' })
+  @ApiResponse({ status: 200, description: 'Workflow activated' })
+  @ApiResponse({ status: 404, description: 'Workflow not found' })
   async activate(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.workflowsService.activate(id, userId);
   }
 
   @Post(':id/deactivate')
   @ApiOperation({ summary: 'Deactivate workflow' })
+  @ApiResponse({ status: 200, description: 'Workflow deactivated' })
+  @ApiResponse({ status: 404, description: 'Workflow not found' })
   async deactivate(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.workflowsService.deactivate(id, userId);
   }
@@ -78,6 +89,8 @@ export class WorkflowsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Manually execute a workflow' })
+  @ApiResponse({ status: 200, description: 'Workflow execution started, returns execution ID' })
+  @ApiResponse({ status: 404, description: 'Workflow not found' })
   async execute(
     @Param('id') id: string,
     @CurrentUser('sub') userId: string,
@@ -90,6 +103,8 @@ export class WorkflowsController {
 
   @Get(':id/versions')
   @ApiOperation({ summary: 'Get workflow versions' })
+  @ApiResponse({ status: 200, description: 'List of workflow versions' })
+  @ApiResponse({ status: 404, description: 'Workflow not found' })
   async getVersions(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.workflowsService.getVersions(id, userId);
   }

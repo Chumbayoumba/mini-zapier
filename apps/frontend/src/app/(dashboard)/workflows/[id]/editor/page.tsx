@@ -11,6 +11,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   type Node,
+  type Edge,
   type NodeTypes,
   type EdgeTypes,
   ConnectionLineType,
@@ -74,9 +75,9 @@ function EditorCanvas() {
 
   const edgeTypes: EdgeTypes = useMemo(() => ({ animated: AnimatedEdge }), []);
 
-  const isValidConnection = useCallback((connection: Connection) => {
+  const isValidConnection = useCallback((connection: Edge | Connection) => {
     const { nodes, edges } = useEditorStore.getState();
-    return validateConnection(connection, edges, nodes).valid;
+    return validateConnection(connection as Connection, edges, nodes).valid;
   }, []);
 
   const handleConnect = useCallback((connection: Connection) => {

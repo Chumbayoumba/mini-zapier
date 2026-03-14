@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
   HealthCheck,
   HealthCheckService,
@@ -22,6 +22,7 @@ export class HealthController {
   @Get()
   @Public()
   @ApiOperation({ summary: 'Liveness probe' })
+  @ApiResponse({ status: 200, description: 'Service is alive' })
   liveness() {
     return { status: 'ok', timestamp: new Date().toISOString() };
   }
@@ -30,6 +31,8 @@ export class HealthController {
   @Public()
   @HealthCheck()
   @ApiOperation({ summary: 'Readiness probe — checks DB and memory' })
+  @ApiResponse({ status: 200, description: 'Service is ready' })
+  @ApiResponse({ status: 503, description: 'Service unavailable — dependency check failed' })
   readiness() {
     return this.health.check([
       () => this.prismaHealth.pingCheck('database', this.prisma as any),
