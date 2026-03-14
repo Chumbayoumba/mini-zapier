@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import {
   ReactFlow,
   MiniMap,
@@ -17,18 +17,17 @@ import {
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useStore } from 'zustand';
 import { useEditorStore } from '@/stores/editor-store';
 import { useWorkflow, useUpdateWorkflow } from '@/hooks/use-workflows';
 import { useEditorKeyboardShortcuts } from '@/hooks/use-editor-keyboard-shortcuts';
+import { useAutoSave } from '@/hooks/use-auto-save';
 import { NodeConfigPanel } from '@/components/editor/node-config-panel';
+import { EditorToolbar } from '@/components/editor/editor-toolbar';
 import TriggerNode from '@/components/editor/nodes/trigger-node';
 import ActionNode from '@/components/editor/nodes/action-node';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
 import { MultiSelectToolbar } from '@/components/editor/multi-select-toolbar';
 import { validateConnection, countTriggerNodes } from '@/lib/graph-validation';
-import { Button } from '@/components/ui/button';
-import { Save, Play, ArrowLeft, Maximize, Loader2, Undo2, Redo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 
@@ -48,15 +47,13 @@ const ACTION_TYPES = [
 
 function EditorCanvas() {
   const params = useParams();
-  const router = useRouter();
   const workflowId = params.id as string;
   const { data: workflow } = useWorkflow(workflowId);
   const updateWorkflow = useUpdateWorkflow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
 
-  const canUndo = useStore(useEditorStore.temporal, (s) => s.pastStates.length > 0);
-  const canRedo = useStore(useEditorStore.temporal, (s) => s.futureStates.length > 0);
+  useAutoSave(workflowId);
 
   const {
     nodes,
@@ -94,13 +91,15 @@ function EditorCanvas() {
 
   const handleSave = useCallback(async () => {
     try {
+      useEditorStore.getState().markSaving();
       await updateWorkflow.mutateAsync({
         id: workflowId,
         definition: { nodes, edges },
       });
-      useEditorStore.getState().markClean();
+      useEditorStore.getState().markSaved();
       toast.success('Workflow saved');
     } catch {
+      useEditorStore.setState({ isSaving: false });
       toast.error('Failed to save');
     }
   }, [workflowId, nodes, edges, updateWorkflow]);
@@ -132,6 +131,17 @@ function EditorCanvas() {
       toast.error('Failed to start execution');
     }
   };
+
+  // Leave guard — warn on unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (useEditorStore.getState().isDirty) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
 
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -232,35 +242,14 @@ function EditorCanvas() {
       {/* Canvas */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Toolbar */}
-        <div className="flex items-center gap-2 border-b px-3 py-2 bg-card">
-          <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground mr-1" onClick={() => router.push('/workflows')}>
-            <ArrowLeft className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline text-xs">Back</span>
-          </Button>
-          <div className="w-px h-5 bg-border" />
-          <Button size="sm" variant="ghost" onClick={() => useEditorStore.temporal.getState().undo()} disabled={!canUndo} title="Undo (Ctrl+Z)">
-            <Undo2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => useEditorStore.temporal.getState().redo()} disabled={!canRedo} title="Redo (Ctrl+Y)">
-            <Redo2 className="h-3.5 w-3.5" />
-          </Button>
-          <div className="w-px h-5 bg-border" />
-          <h2 className="font-semibold text-sm flex-1 truncate px-1">
-            {workflow?.name || 'Workflow Editor'}
-          </h2>
-          <Button size="sm" variant="ghost" onClick={() => fitView({ padding: 0.2 })} title="Fit to view">
-            <Maximize className="h-3.5 w-3.5" />
-          </Button>
-          <div className="w-px h-5 bg-border" />
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleSave} disabled={updateWorkflow.isPending}>
-            {updateWorkflow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            Save
-          </Button>
-          <Button size="sm" className="gap-1.5 shadow-sm shadow-primary/20" onClick={handleRun}>
-            <Play className="h-3.5 w-3.5" />
-            Run
-          </Button>
-        </div>
+        <EditorToolbar
+          workflowId={workflowId}
+          workflowName={workflow?.name}
+          workflowActive={workflow?.isActive}
+          onSave={handleSave}
+          onRun={handleRun}
+          isSaving={updateWorkflow.isPending}
+        />
 
         <div ref={reactFlowWrapper} className={`flex-1 relative ${isDragOver ? 'drag-over' : ''}`} onDragLeave={() => setIsDragOver(false)}>
           <ReactFlow

@@ -44,6 +44,8 @@ interface EditorState {
   edges: Edge[];
   selectedNode: Node | null;
   isDirty: boolean;
+  isSaving: boolean;
+  lastSavedAt: Date | null;
   clipboard: ClipboardData | null;
 
   // Existing actions (signatures preserved)
@@ -65,6 +67,8 @@ interface EditorState {
   selectAllNodes: () => void;
   markDirty: () => void;
   markClean: () => void;
+  markSaving: () => void;
+  markSaved: () => void;
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -74,6 +78,8 @@ export const useEditorStore = create<EditorState>()(
       edges: [],
       selectedNode: null,
       isDirty: false,
+      isSaving: false,
+      lastSavedAt: null,
       clipboard: null,
 
       // Existing actions — signatures preserved
@@ -105,7 +111,7 @@ export const useEditorStore = create<EditorState>()(
           isDirty: true,
         }),
 
-      reset: () => set({ nodes: [], edges: [], selectedNode: null, isDirty: false, clipboard: null }),
+      reset: () => set({ nodes: [], edges: [], selectedNode: null, isDirty: false, isSaving: false, lastSavedAt: null, clipboard: null }),
 
       // New actions
       deleteSelectedNodes: () => {
@@ -225,6 +231,8 @@ export const useEditorStore = create<EditorState>()(
 
       markDirty: () => set({ isDirty: true }),
       markClean: () => set({ isDirty: false }),
+      markSaving: () => set({ isSaving: true }),
+      markSaved: () => set({ isSaving: false, isDirty: false, lastSavedAt: new Date() }),
     }),
     {
       partialize: (state) => ({

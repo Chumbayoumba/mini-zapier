@@ -130,7 +130,7 @@ export function NodeConfigPanel() {
   };
 
   return (
-    <div className="w-72 border-l bg-card overflow-y-auto shrink-0">
+    <div className="w-72 border-l bg-card overflow-y-auto shrink-0 animate-in slide-in-from-right duration-200">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">

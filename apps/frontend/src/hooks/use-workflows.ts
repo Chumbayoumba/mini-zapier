@@ -68,6 +68,20 @@ export function useUpdateWorkflow() {
   });
 }
 
+export function useUpdateWorkflowSilent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string; [key: string]: any }) => {
+      const res = await api.patch(`/workflows/${id}`, data);
+      return res.data.data || res.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workflow', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+    },
+  });
+}
+
 export function useDeleteWorkflow() {
   const queryClient = useQueryClient();
   return useMutation({
