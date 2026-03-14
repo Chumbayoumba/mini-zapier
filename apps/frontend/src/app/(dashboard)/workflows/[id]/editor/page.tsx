@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useEffect, useMemo } from 'react';
+import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ReactFlow,
@@ -13,6 +13,8 @@ import {
   type Node,
   type NodeTypes,
   type EdgeTypes,
+  ConnectionLineType,
+  type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useStore } from 'zustand';
@@ -23,6 +25,8 @@ import { NodeConfigPanel } from '@/components/editor/node-config-panel';
 import TriggerNode from '@/components/editor/nodes/trigger-node';
 import ActionNode from '@/components/editor/nodes/action-node';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
+import { MultiSelectToolbar } from '@/components/editor/multi-select-toolbar';
+import { validateConnection, countTriggerNodes } from '@/lib/graph-validation';
 import { Button } from '@/components/ui/button';
 import { Save, Play, ArrowLeft, Maximize, Loader2, Undo2, Redo2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -59,7 +63,6 @@ function EditorCanvas() {
     edges,
     onNodesChange,
     onEdgesChange,
-    onConnect,
     setNodes,
     setEdges,
     addNode,
@@ -73,6 +76,21 @@ function EditorCanvas() {
   );
 
   const edgeTypes: EdgeTypes = useMemo(() => ({ animated: AnimatedEdge }), []);
+
+  const isValidConnection = useCallback((connection: Connection) => {
+    const { nodes, edges } = useEditorStore.getState();
+    return validateConnection(connection, edges, nodes).valid;
+  }, []);
+
+  const handleConnect = useCallback((connection: Connection) => {
+    const { edges, nodes } = useEditorStore.getState();
+    const result = validateConnection(connection, edges, nodes);
+    if (!result.valid) {
+      toast.error(result.reason || 'Invalid connection');
+      return;
+    }
+    useEditorStore.getState().onConnect(connection);
+  }, []);
 
   const handleSave = useCallback(async () => {
     try {
@@ -115,9 +133,12 @@ function EditorCanvas() {
     }
   };
 
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
+      setIsDragOver(false);
       const type = event.dataTransfer.getData('application/reactflow-type');
       const label = event.dataTransfer.getData('application/reactflow-label');
 
@@ -125,6 +146,14 @@ function EditorCanvas() {
 
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const isTrigger = ['WEBHOOK', 'CRON', 'EMAIL'].includes(type);
+
+      if (isTrigger) {
+        const currentTriggers = countTriggerNodes(useEditorStore.getState().nodes);
+        if (currentTriggers >= 1) {
+          toast.warning('Workflow can only have one trigger. Remove the existing trigger first.');
+          return;
+        }
+      }
 
       const newNode: Node = {
         id: `${isTrigger ? 'trigger' : 'action'}-${Date.now()}`,
@@ -141,6 +170,7 @@ function EditorCanvas() {
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
+    setIsDragOver(true);
   }, []);
 
   return (
@@ -232,7 +262,7 @@ function EditorCanvas() {
           </Button>
         </div>
 
-        <div ref={reactFlowWrapper} className="flex-1">
+        <div ref={reactFlowWrapper} className={`flex-1 relative ${isDragOver ? 'drag-over' : ''}`} onDragLeave={() => setIsDragOver(false)}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -240,7 +270,8 @@ function EditorCanvas() {
             edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
+            onConnect={handleConnect}
+            isValidConnection={isValidConnection}
             onNodeClick={(_, node) => setSelectedNode(node)}
             onPaneClick={() => setSelectedNode(null)}
             onDrop={onDrop}
@@ -249,6 +280,9 @@ function EditorCanvas() {
             fitView
             defaultEdgeOptions={{ type: 'animated', animated: true }}
             proOptions={{ hideAttribution: true }}
+            connectionLineType={ConnectionLineType.SmoothStep}
+            connectionLineStyle={{ stroke: '#6366F1', strokeWidth: 2, strokeDasharray: '5 5' }}
+            deleteKeyCode={null}
           >
             <Controls className="!rounded-lg !border !shadow-sm" />
             <MiniMap
@@ -259,6 +293,7 @@ function EditorCanvas() {
             />
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           </ReactFlow>
+          <MultiSelectToolbar />
         </div>
       </div>
 

@@ -58,7 +58,7 @@ function TriggerNode({ data, selected }: NodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!h-3 !w-3 !border-2 !border-white !bg-gray-400"
+        className="!h-3 !w-3 !border-2 !border-white !bg-gray-400 hover:!scale-125 transition-transform"
         style={{ background: color }}
       />
     </div>
