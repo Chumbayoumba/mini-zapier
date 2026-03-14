@@ -2,12 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { WebhookService } from './webhook.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EngineService } from '../../engine/engine.service';
+import { QueueService } from '../../queue/queue.service';
 
 describe('WebhookService', () => {
   let service: WebhookService;
   let prisma: Record<string, any>;
-  let engineService: jest.Mocked<Pick<EngineService, 'executeWorkflow'>>;
+  let queueService: jest.Mocked<Pick<QueueService, 'addExecution'>>;
 
   const mockTrigger = {
     id: 'trigger-1',
@@ -29,15 +29,15 @@ describe('WebhookService', () => {
       },
     };
 
-    engineService = {
-      executeWorkflow: jest.fn(),
+    queueService = {
+      addExecution: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WebhookService,
         { provide: PrismaService, useValue: prisma },
-        { provide: EngineService, useValue: engineService },
+        { provide: QueueService, useValue: queueService },
       ],
     }).compile();
 
@@ -54,17 +54,17 @@ describe('WebhookService', () => {
 
     it('should process webhook with valid token and active workflow', async () => {
       prisma.trigger.findUnique.mockResolvedValue(mockTrigger);
-      engineService.executeWorkflow.mockResolvedValue('exec-1');
+      queueService.addExecution.mockResolvedValue('job-1');
       prisma.trigger.update.mockResolvedValue({});
 
       const result = await service.processWebhook('valid-token', body, headers);
 
-      expect(result).toEqual({ executionId: 'exec-1', status: 'triggered' });
+      expect(result).toEqual({ jobId: 'job-1', status: 'triggered' });
       expect(prisma.trigger.findUnique).toHaveBeenCalledWith({
         where: { webhookToken: 'valid-token' },
         include: { workflow: true },
       });
-      expect(engineService.executeWorkflow).toHaveBeenCalledWith('wf-1', {
+      expect(queueService.addExecution).toHaveBeenCalledWith('wf-1', {
         body,
         headers,
         receivedAt: expect.any(String),
@@ -107,9 +107,9 @@ describe('WebhookService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should pass body and headers to engine service', async () => {
+    it('should pass body and headers to queue service', async () => {
       prisma.trigger.findUnique.mockResolvedValue(mockTrigger);
-      engineService.executeWorkflow.mockResolvedValue('exec-2');
+      queueService.addExecution.mockResolvedValue('job-2');
       prisma.trigger.update.mockResolvedValue({});
 
       const customBody = { data: [1, 2, 3] };
@@ -117,7 +117,7 @@ describe('WebhookService', () => {
 
       await service.processWebhook('valid-token', customBody, customHeaders);
 
-      expect(engineService.executeWorkflow).toHaveBeenCalledWith('wf-1', {
+      expect(queueService.addExecution).toHaveBeenCalledWith('wf-1', {
         body: customBody,
         headers: customHeaders,
         receivedAt: expect.any(String),
@@ -126,7 +126,7 @@ describe('WebhookService', () => {
 
     it('should update lastTriggeredAt after successful execution', async () => {
       prisma.trigger.findUnique.mockResolvedValue(mockTrigger);
-      engineService.executeWorkflow.mockResolvedValue('exec-3');
+      queueService.addExecution.mockResolvedValue('job-3');
       prisma.trigger.update.mockResolvedValue({});
 
       await service.processWebhook('valid-token', body, headers);

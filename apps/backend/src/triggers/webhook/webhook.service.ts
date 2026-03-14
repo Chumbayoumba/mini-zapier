@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EngineService } from '../../engine/engine.service';
+import { QueueService } from '../../queue/queue.service';
 
 @Injectable()
 export class WebhookService {
@@ -8,7 +8,7 @@ export class WebhookService {
 
   constructor(
     private prisma: PrismaService,
-    private engineService: EngineService,
+    private queueService: QueueService,
   ) {}
 
   async processWebhook(token: string, body: any, headers: Record<string, string>) {
@@ -23,7 +23,7 @@ export class WebhookService {
 
     this.logger.log(`Processing webhook for workflow ${trigger.workflowId}`);
 
-    const executionId = await this.engineService.executeWorkflow(trigger.workflowId, {
+    const jobId = await this.queueService.addExecution(trigger.workflowId, {
       body,
       headers,
       receivedAt: new Date().toISOString(),
@@ -34,6 +34,6 @@ export class WebhookService {
       data: { lastTriggeredAt: new Date() },
     });
 
-    return { executionId, status: 'triggered' };
+    return { jobId, status: 'triggered' };
   }
 }
