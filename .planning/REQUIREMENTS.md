@@ -128,13 +128,16 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| SEC-01..07 | TBD | Pending |
-| TRG-01..04 | TBD | Pending |
-| ACT-01..07 | TBD | Pending |
-| EDT-01..09 | TBD | Pending |
-| EXE-01..08 | TBD | Pending |
-| ERR-01..04 | TBD | Pending |
-| DSH-01..06 | TBD | Pending |
-| API-01..03 | TBD | Pending |
-| TST-01..05 | TBD | Pending |
-| INF-01..03 | TBD | Pending |
+| SEC-01..07 | Phase 1 | Pending |
+| TRG-01..04 | Phase 3 | Pending |
+| ACT-01..07 | Phase 4 | Pending |
+| EDT-01..09 | Phase 6 | Pending |
+| EXE-01..02, EXE-04..08 | Phase 2 | Pending |
+| EXE-03 | Phase 5 | Pending |
+| ERR-01, ERR-03..04 | Phase 2 | Pending |
+| ERR-02 | Phase 8 | Pending |
+| DSH-01..06 | Phase 5 | Pending |
+| API-01..03 | Phase 7 | Pending |
+| TST-01..05 | Phase 7 | Pending |
+| INF-01 | Phase 2 | Pending |
+| INF-02..03 | Phase 8 | Pending |
