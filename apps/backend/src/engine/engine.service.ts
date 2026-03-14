@@ -8,6 +8,7 @@ import {
   WorkflowErrorConfig,
   DEFAULT_ERROR_CONFIG,
 } from './execution-context';
+import { TemplateEngine, TemplateContext } from './template-engine';
 
 @Injectable()
 export class EngineService {
@@ -252,7 +253,18 @@ export class EngineService {
   ): Promise<any> {
     const startedAt = new Date();
 
-    // Create step log once
+    // Build template context from execution state
+    const templateContext: TemplateContext = {
+      steps: context.stepResults,
+      trigger: context.triggerData || {},
+    };
+    // Resolve {{...}} expressions in all config string values
+    const resolvedConfig = TemplateEngine.resolveConfig(
+      node.data.config || {},
+      templateContext,
+    );
+
+    // Create step log once (log resolved config for debugging)
     const stepLog = await this.prisma.executionStepLog.create({
       data: {
         executionId: context.executionId,
@@ -260,7 +272,7 @@ export class EngineService {
         nodeName: node.data.label,
         nodeType: node.data.type,
         status: 'RUNNING',
-        input: node.data.config,
+        input: resolvedConfig,
         startedAt,
       },
     });
@@ -285,7 +297,7 @@ export class EngineService {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const input = {
-          ...node.data.config,
+          ...resolvedConfig,
           _context: {
             ...context.stepResults,
             triggerData: context.triggerData,
