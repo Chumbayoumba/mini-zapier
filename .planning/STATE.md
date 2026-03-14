@@ -5,16 +5,16 @@
 ---
 
 ## Current Focus
-Phase: 01-security-hardening
-Current Plan: 3 of 3 ✅
-Next action: `gsd:plan-phase 2` (Phase 1 complete, ready for Phase 2)
+Phase: 02-engine-reliability
+Current Plan: 1 of 3 (02-01 complete)
+Next action: `gsd:execute-phase 2` (Execute Plan 02-02)
 
 ## Phase Status
 
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
 | 1 | Security Hardening & Architecture Cleanup | ✅ Complete | 3/3 complete |
-| 2 | Engine Reliability & Error Handling | ⬜ Not started | — |
+| 2 | Engine Reliability & Error Handling | 🔄 In Progress | 1/3 complete |
 | 3 | Triggers — Fix & Complete | ⬜ Not started | — |
 | 4 | Actions — Complete & Harden | ⬜ Not started | — |
 | 5 | Dashboard & Monitoring | ⬜ Not started | — |
@@ -42,6 +42,9 @@ Next action: `gsd:plan-phase 2` (Phase 1 complete, ready for Phase 2)
 | WebSocket room-join ownership via Prisma | findFirst with workflow include for execution, compound where for workflow | 2025-01-30 |
 | CredentialService iv:authTag:ciphertext format | Colon-separated base64 for human-debuggable encrypted values | 2025-01-30 |
 | CREDENTIAL_ENCRYPTION_KEY optional in dev | Production-required via Joi validation, allows easy local development | 2025-01-30 |
+| Types file at engine/execution-context.ts | Placed at engine root (tooling limitation — no mkdir for types/ subdir) | 2025-01-30 |
+| BullMQ attempts: 1, step-level retry in 02-02 | Job-level retry re-runs entire workflow; step-level is correct approach | 2025-01-30 |
+| WorkflowProcessor in EngineModule providers | Processor depends on EngineService, belongs in same module | 2025-01-30 |
 
 ## Gotchas & Warnings
 
@@ -50,9 +53,13 @@ Next action: `gsd:plan-phase 2` (Phase 1 complete, ready for Phase 2)
 - **@xyflow/react v12** — use `useReactFlow()` not deprecated `useStore()`
 - **BullMQ requires Redis 6.2+** — Docker Compose already has Redis 7 ✓
 - **Next.js 15 App Router** — project uses Pages Router, don't mix
+- **Types path deviation** — `ExecutionContext` types at `engine/execution-context.ts` not `engine/types/execution-context.ts`
 
 ## Quick Tasks Completed
 
 | Task | Description | Date |
 |------|-------------|------|
 | — | — | — |
+
+## Last Session
+- **Stopped at:** Completed 02-01-PLAN.md (Foundation — Pino Logging, Schema Migration, Graceful Shutdown)

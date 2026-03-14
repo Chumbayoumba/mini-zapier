@@ -54,7 +54,7 @@
 - [ ] **EXE-05**: User can resume a paused workflow from where it stopped
 - [ ] **EXE-06**: System retries failed steps with configurable exponential backoff (max attempts, base delay, jitter)
 - [ ] **EXE-07**: User can manually retry a failed execution from the failed step
-- [ ] **EXE-08**: System handles graceful shutdown — in-progress jobs are completed before worker stops
+- [x] **EXE-08**: System handles graceful shutdown — in-progress jobs are completed before worker stops
 
 ### Error Handling (ERR)
 
@@ -88,7 +88,7 @@
 
 ### Infrastructure (INF)
 
-- [ ] **INF-01**: Pino logger replaces NestJS default logger with structured JSON output and correlation IDs per execution
+- [x] **INF-01**: Pino logger replaces NestJS default logger with structured JSON output and correlation IDs per execution
 - [ ] **INF-02**: Docker production setup works end-to-end (build, migrate, seed, start) with a single `docker compose up`
 - [ ] **INF-03**: Environment variables are validated at startup with clear error messages for missing required values
 
@@ -128,16 +128,16 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| SEC-01..07 | Phase 1 | Pending |
+| SEC-01..07 | Phase 1 | ✅ Complete |
 | TRG-01..04 | Phase 3 | Pending |
 | ACT-01..07 | Phase 4 | Pending |
 | EDT-01..09 | Phase 6 | Pending |
-| EXE-01..02, EXE-04..08 | Phase 2 | Pending |
+| EXE-01..02, EXE-04..08 | Phase 2 | In Progress |
 | EXE-03 | Phase 5 | Pending |
-| ERR-01, ERR-03..04 | Phase 2 | Pending |
+| ERR-01, ERR-03..04 | Phase 2 | In Progress |
 | ERR-02 | Phase 8 | Pending |
 | DSH-01..06 | Phase 5 | Pending |
 | API-01..03 | Phase 7 | Pending |
 | TST-01..05 | Phase 7 | Pending |
-| INF-01 | Phase 2 | Pending |
+| INF-01 | Phase 2 | ✅ Complete |
 | INF-02..03 | Phase 8 | Pending |
