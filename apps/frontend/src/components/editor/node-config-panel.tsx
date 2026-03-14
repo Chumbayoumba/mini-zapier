@@ -151,7 +151,8 @@ export function NodeConfigPanel() {
   if (!selectedNode) return null;
 
   const nodeType = selectedNode.data?.type as string;
-  const isTrigger = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(nodeType);
+  // Use ReactFlow node type to distinguish trigger vs action (not data.type which can be ambiguous e.g. TELEGRAM)
+  const isTrigger = selectedNode.type === 'triggerNode';
   let fields = isTrigger ? TRIGGER_FIELDS[nodeType] : ACTION_FIELDS[nodeType];
 
   // Check if workflow has a Telegram trigger (for smart defaults in action)
