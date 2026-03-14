@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { ActionHandler } from '../action-handler.interface';
 
 @Injectable()
-export class EmailAction {
+export class EmailAction implements ActionHandler {
+  readonly type = 'SEND_EMAIL';
   private readonly logger = new Logger(EmailAction.name);
   private transporter: nodemailer.Transporter;
 

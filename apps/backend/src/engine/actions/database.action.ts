@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ActionHandler } from '../action-handler.interface';
 
 type DbOperation = 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'RAW';
 
@@ -15,7 +16,8 @@ interface DatabaseConfig {
 }
 
 @Injectable()
-export class DatabaseAction {
+export class DatabaseAction implements ActionHandler {
+  readonly type = 'DATABASE';
   private readonly logger = new Logger(DatabaseAction.name);
   private readonly ALLOWED_TABLES = [
     'users', 'workflows', 'workflow_versions',

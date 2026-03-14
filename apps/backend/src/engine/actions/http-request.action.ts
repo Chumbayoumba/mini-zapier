@@ -4,9 +4,11 @@ import axiosRetry from 'axios-retry';
 import { URL } from 'url';
 import * as net from 'net';
 import * as dns from 'dns/promises';
+import { ActionHandler } from '../action-handler.interface';
 
 @Injectable()
-export class HttpRequestAction {
+export class HttpRequestAction implements ActionHandler {
+  readonly type = 'HTTP_REQUEST';
   private readonly logger = new Logger(HttpRequestAction.name);
 
   private readonly BLOCKED_IP_RANGES = [

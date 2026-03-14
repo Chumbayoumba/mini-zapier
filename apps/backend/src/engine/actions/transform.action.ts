@@ -1,11 +1,13 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as jsonata from 'jsonata';
+import { ActionHandler } from '../action-handler.interface';
 
 const MAX_INPUT_SIZE = 1_048_576; // 1 MB
 const EVALUATION_TIMEOUT = 5_000; // 5 seconds
 
 @Injectable()
-export class TransformAction {
+export class TransformAction implements ActionHandler {
+  readonly type = 'TRANSFORM';
   private readonly logger = new Logger(TransformAction.name);
 
   async execute(config: any): Promise<any> {
