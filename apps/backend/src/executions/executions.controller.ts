@@ -54,9 +54,27 @@ export class ExecutionsController {
     return this.executionsService.cancel(id, userId);
   }
 
+  @Post(':id/pause')
+  @ApiOperation({ summary: 'Pause a running execution' })
+  async pause(@CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.executionsService.pause(id, userId);
+  }
+
+  @Post(':id/resume')
+  @ApiOperation({ summary: 'Resume a paused execution' })
+  async resume(@CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.executionsService.resume(id, userId);
+  }
+
   @Post(':id/retry')
   @ApiOperation({ summary: 'Retry failed execution' })
   async retry(@CurrentUser('sub') userId: string, @Param('id') id: string) {
     return this.executionsService.retry(id, userId);
+  }
+
+  @Post(':id/retry-from-failed')
+  @ApiOperation({ summary: 'Retry execution from the failed step' })
+  async retryFromFailed(@CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.executionsService.retryFromFailed(id, userId);
   }
 }

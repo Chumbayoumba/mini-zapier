@@ -1,11 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExecutionsService } from './executions.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { EngineService } from '../engine/engine.service';
+import { QueueService } from '../queue/queue.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('ExecutionsService', () => {
   let service: ExecutionsService;
   let prisma: Record<string, any>;
+  let engineService: { resumeWorkflow: jest.Mock };
+  let queueService: { addExecution: jest.Mock };
 
   const userId = 'user-1';
 
@@ -24,8 +28,8 @@ describe('ExecutionsService', () => {
     ...mockExecution,
     workflow: { id: 'wf-1', name: 'Test Workflow', definition: { nodes: [], edges: [] }, userId: 'user-1' },
     stepLogs: [
-      { id: 'log-1', stepName: 'Step 1', status: 'COMPLETED', startedAt: new Date() },
-      { id: 'log-2', stepName: 'Step 2', status: 'COMPLETED', startedAt: new Date() },
+      { id: 'log-1', nodeId: 'step-a', stepName: 'Step 1', status: 'COMPLETED', startedAt: new Date('2024-01-01T00:00:00Z') },
+      { id: 'log-2', nodeId: 'step-b', stepName: 'Step 2', status: 'COMPLETED', startedAt: new Date('2024-01-01T00:01:00Z') },
     ],
   };
 
@@ -38,15 +42,23 @@ describe('ExecutionsService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
+      executionStepLog: {
+        deleteMany: jest.fn(),
+      },
       workflow: {
         count: jest.fn(),
       },
     };
 
+    engineService = { resumeWorkflow: jest.fn() };
+    queueService = { addExecution: jest.fn() };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ExecutionsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: EngineService, useValue: engineService },
+        { provide: QueueService, useValue: queueService },
       ],
     }).compile();
 
@@ -249,26 +261,162 @@ describe('ExecutionsService', () => {
     });
   });
 
+  describe('pause', () => {
+    it('should pause a running execution', async () => {
+      const running = { ...mockExecutionWithLogs, status: 'RUNNING' };
+      prisma.workflowExecution.findUnique.mockResolvedValue(running);
+      prisma.workflowExecution.update.mockResolvedValue({ ...running, status: 'PAUSED' });
+
+      const result = await service.pause('exec-1');
+
+      expect(result.status).toBe('PAUSED');
+      expect(prisma.workflowExecution.update).toHaveBeenCalledWith({
+        where: { id: 'exec-1' },
+        data: { status: 'PAUSED', pausedAt: expect.any(Date) },
+      });
+    });
+
+    it('should throw if execution is not RUNNING', async () => {
+      prisma.workflowExecution.findUnique.mockResolvedValue(mockExecutionWithLogs);
+
+      await expect(service.pause('exec-1')).rejects.toThrow(
+        'Can only pause running executions',
+      );
+    });
+
+    it('should throw if execution is PAUSED', async () => {
+      const paused = { ...mockExecutionWithLogs, status: 'PAUSED' };
+      prisma.workflowExecution.findUnique.mockResolvedValue(paused);
+
+      await expect(service.pause('exec-1')).rejects.toThrow(
+        'Can only pause running executions',
+      );
+    });
+  });
+
+  describe('resume', () => {
+    it('should call engineService.resumeWorkflow for a paused execution', async () => {
+      const paused = { ...mockExecutionWithLogs, status: 'PAUSED' };
+      prisma.workflowExecution.findUnique.mockResolvedValue(paused);
+      engineService.resumeWorkflow.mockResolvedValue('exec-1');
+
+      const result = await service.resume('exec-1');
+
+      expect(result).toBe('exec-1');
+      expect(engineService.resumeWorkflow).toHaveBeenCalledWith('exec-1');
+    });
+
+    it('should throw if execution is not PAUSED', async () => {
+      const running = { ...mockExecutionWithLogs, status: 'RUNNING' };
+      prisma.workflowExecution.findUnique.mockResolvedValue(running);
+
+      await expect(service.resume('exec-1')).rejects.toThrow(
+        'Can only resume paused executions',
+      );
+    });
+
+    it('should throw if execution is COMPLETED', async () => {
+      prisma.workflowExecution.findUnique.mockResolvedValue(mockExecutionWithLogs);
+
+      await expect(service.resume('exec-1')).rejects.toThrow(
+        'Can only resume paused executions',
+      );
+    });
+  });
+
+  describe('retryFromFailed', () => {
+    it('should identify failed step, cleanup logs, and call resumeWorkflow', async () => {
+      const failedExec = {
+        ...mockExecutionWithLogs,
+        status: 'FAILED',
+        stepLogs: [
+          { id: 'log-1', nodeId: 'step-a', status: 'COMPLETED', startedAt: new Date('2024-01-01T00:00:00Z') },
+          { id: 'log-2', nodeId: 'step-b', status: 'FAILED', startedAt: new Date('2024-01-01T00:01:00Z') },
+        ],
+      };
+      prisma.workflowExecution.findUnique.mockResolvedValue(failedExec);
+      prisma.executionStepLog.deleteMany.mockResolvedValue({ count: 1 });
+      prisma.workflowExecution.update.mockResolvedValue({});
+      engineService.resumeWorkflow.mockResolvedValue('exec-1');
+
+      await service.retryFromFailed('exec-1');
+
+      // Should delete the failed step log (and any after it)
+      expect(prisma.executionStepLog.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['log-2'] } },
+      });
+      // Should update execution to PAUSED with lastCompletedNodeId of step before failure
+      expect(prisma.workflowExecution.update).toHaveBeenCalledWith({
+        where: { id: 'exec-1' },
+        data: {
+          status: 'PAUSED',
+          lastCompletedNodeId: 'step-a',
+          error: null,
+          completedAt: null,
+        },
+      });
+      // Should call resumeWorkflow
+      expect(engineService.resumeWorkflow).toHaveBeenCalledWith('exec-1');
+    });
+
+    it('should throw if execution is not FAILED', async () => {
+      const running = { ...mockExecutionWithLogs, status: 'RUNNING' };
+      prisma.workflowExecution.findUnique.mockResolvedValue(running);
+
+      await expect(service.retryFromFailed('exec-1')).rejects.toThrow(
+        'Can only retry failed executions',
+      );
+    });
+
+    it('should throw if no failed step found', async () => {
+      const failedExec = {
+        ...mockExecutionWithLogs,
+        status: 'FAILED',
+        stepLogs: [
+          { id: 'log-1', nodeId: 'step-a', status: 'COMPLETED', startedAt: new Date() },
+        ],
+      };
+      prisma.workflowExecution.findUnique.mockResolvedValue(failedExec);
+
+      await expect(service.retryFromFailed('exec-1')).rejects.toThrow(
+        'No failed step found in execution',
+      );
+    });
+
+    it('should set lastCompletedNodeId to null if first step failed', async () => {
+      const failedExec = {
+        ...mockExecutionWithLogs,
+        status: 'FAILED',
+        stepLogs: [
+          { id: 'log-1', nodeId: 'step-a', status: 'FAILED', startedAt: new Date('2024-01-01T00:00:00Z') },
+        ],
+      };
+      prisma.workflowExecution.findUnique.mockResolvedValue(failedExec);
+      prisma.executionStepLog.deleteMany.mockResolvedValue({ count: 1 });
+      prisma.workflowExecution.update.mockResolvedValue({});
+      engineService.resumeWorkflow.mockResolvedValue('exec-1');
+
+      await service.retryFromFailed('exec-1');
+
+      expect(prisma.workflowExecution.update).toHaveBeenCalledWith({
+        where: { id: 'exec-1' },
+        data: expect.objectContaining({
+          lastCompletedNodeId: null,
+        }),
+      });
+    });
+  });
+
   describe('retry', () => {
-    it('should create new execution from a failed one', async () => {
+    it('should enqueue via BullMQ for a failed execution', async () => {
       const failed = { ...mockExecutionWithLogs, status: 'FAILED' };
       prisma.workflowExecution.findUnique.mockResolvedValue(failed);
-      prisma.workflowExecution.create.mockResolvedValue({
-        id: 'exec-2',
-        workflowId: 'wf-1',
-        status: 'PENDING',
-      });
+      queueService.addExecution.mockResolvedValue('job-123');
 
       const result = await service.retry('exec-1');
 
-      expect(result.status).toBe('PENDING');
-      expect(prisma.workflowExecution.create).toHaveBeenCalledWith({
-        data: {
-          workflowId: 'wf-1',
-          triggerData: { key: 'value' },
-          status: 'PENDING',
-        },
-      });
+      expect(result).toEqual({ jobId: 'job-123', workflowId: 'wf-1' });
+      expect(queueService.addExecution).toHaveBeenCalledWith('wf-1', { key: 'value' });
     });
 
     it('should throw if execution is not failed or cancelled', async () => {
@@ -277,6 +425,16 @@ describe('ExecutionsService', () => {
       await expect(service.retry('exec-1')).rejects.toThrow(
         'Can only retry failed or cancelled executions',
       );
+    });
+
+    it('should enqueue for cancelled executions too', async () => {
+      const cancelled = { ...mockExecutionWithLogs, status: 'CANCELLED' };
+      prisma.workflowExecution.findUnique.mockResolvedValue(cancelled);
+      queueService.addExecution.mockResolvedValue('job-456');
+
+      const result = await service.retry('exec-1');
+
+      expect(result).toEqual({ jobId: 'job-456', workflowId: 'wf-1' });
     });
   });
 });

@@ -1,11 +1,17 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { EngineService } from '../engine/engine.service';
+import { QueueService } from '../queue/queue.service';
 
 @Injectable()
 export class ExecutionsService {
   private readonly logger = new Logger(ExecutionsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private engineService: EngineService,
+    private queueService: QueueService,
+  ) {}
 
   async findAllByUser(userId: string, page = 1, limit = 20, status?: string) {
     const skip = (page - 1) * limit;
@@ -54,21 +60,81 @@ export class ExecutionsService {
     });
   }
 
+  async pause(id: string, userId?: string) {
+    const execution = await this.findById(id, userId);
+    if (execution.status !== 'RUNNING') {
+      throw new Error('Can only pause running executions');
+    }
+    // Set status to PAUSED — the EngineService step loop will detect this
+    return this.prisma.workflowExecution.update({
+      where: { id },
+      data: { status: 'PAUSED', pausedAt: new Date() },
+    });
+  }
+
+  async resume(id: string, userId?: string) {
+    const execution = await this.findById(id, userId);
+    if (execution.status !== 'PAUSED') {
+      throw new Error('Can only resume paused executions');
+    }
+    // Directly call engineService.resumeWorkflow which handles state reconstruction
+    return this.engineService.resumeWorkflow(id);
+  }
+
+  async retryFromFailed(id: string, userId?: string) {
+    const execution = await this.findById(id, userId);
+    if (execution.status !== 'FAILED') {
+      throw new Error('Can only retry failed executions');
+    }
+
+    // Find the failed step
+    const failedStep = execution.stepLogs?.find((s: any) => s.status === 'FAILED');
+    if (!failedStep) {
+      throw new Error('No failed step found in execution');
+    }
+
+    // Sort step logs by startedAt to get execution order
+    const executionOrder = [...(execution.stepLogs || [])].sort(
+      (a: any, b: any) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime(),
+    );
+
+    const failedIndex = executionOrder.findIndex((s: any) => s.id === failedStep.id);
+    const stepsToDelete = executionOrder.slice(failedIndex).map((s: any) => s.id);
+
+    // Delete the failed step and any subsequent step logs
+    await this.prisma.executionStepLog.deleteMany({
+      where: { id: { in: stepsToDelete } },
+    });
+
+    // Update execution to PAUSED state so resumeWorkflow can pick it up
+    const lastCompletedNode = failedIndex > 0 ? executionOrder[failedIndex - 1].nodeId : null;
+
+    await this.prisma.workflowExecution.update({
+      where: { id },
+      data: {
+        status: 'PAUSED',
+        lastCompletedNodeId: lastCompletedNode,
+        error: null,
+        completedAt: null,
+      },
+    });
+
+    // Resume from the failed step
+    return this.engineService.resumeWorkflow(id);
+  }
+
   async retry(id: string, userId?: string) {
     const execution = await this.findById(id, userId);
     if (execution.status !== 'FAILED' && execution.status !== 'CANCELLED') {
       throw new Error('Can only retry failed or cancelled executions');
     }
-    // Create a new execution with the same trigger data
-    const newExecution = await this.prisma.workflowExecution.create({
-      data: {
-        workflowId: execution.workflowId,
-        triggerData: execution.triggerData ?? undefined,
-        status: 'PENDING',
-      },
-    });
-    this.logger.log(`Retry: created execution ${newExecution.id} from ${id}`);
-    return newExecution;
+    // Enqueue a fresh execution via BullMQ (fixes the dangling execution bug)
+    const jobId = await this.queueService.addExecution(
+      execution.workflowId,
+      execution.triggerData ?? undefined,
+    );
+    this.logger.log(`Retry: enqueued job ${jobId} for workflow ${execution.workflowId} from ${id}`);
+    return { jobId, workflowId: execution.workflowId };
   }
 
   async getStats(userId: string) {
