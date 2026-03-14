@@ -28,9 +28,12 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const secret = new TextEncoder().encode(
-      process.env.JWT_SECRET || 'super-secret-jwt-key-for-dev-32chars',
-    );
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('SECURITY: JWT_SECRET environment variable is not set');
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    const secret = new TextEncoder().encode(jwtSecret);
     await jwtVerify(token, secret);
     return NextResponse.next();
   } catch {

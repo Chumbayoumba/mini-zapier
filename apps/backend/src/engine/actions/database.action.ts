@@ -20,7 +20,7 @@ export class DatabaseAction implements ActionHandler {
   readonly type = 'DATABASE';
   private readonly logger = new Logger(DatabaseAction.name);
   private readonly ALLOWED_TABLES = [
-    'users', 'workflows', 'workflow_versions',
+    'workflows', 'workflow_versions',
     'triggers', 'workflow_executions', 'execution_step_logs',
   ];
 
@@ -33,20 +33,13 @@ export class DatabaseAction implements ActionHandler {
 
     this.logger.log(`Executing DB ${operation} operation`);
 
-    switch (operation) {
-      case 'SELECT':
-        return this.executeSelect(config);
-      case 'INSERT':
-        return this.executeInsert(config);
-      case 'UPDATE':
-        return this.executeUpdate(config);
-      case 'DELETE':
-        return this.executeDelete(config);
-      case 'RAW':
-        return this.executeRaw(config);
-      default:
-        throw new BadRequestException(`Unknown DB operation: ${operation}`);
+    if (operation !== 'SELECT') {
+      throw new BadRequestException(
+        'Only SELECT operations are allowed for security. Use the API for data mutations.',
+      );
     }
+
+    return this.executeSelect(config);
   }
 
   private validateTable(table?: string): asserts table is string {
@@ -85,50 +78,5 @@ export class DatabaseAction implements ActionHandler {
     const sql = `SELECT * FROM "${config.table}" ${clause} ${orderBy} ${limit}`;
     const result = await this.prisma.$queryRawUnsafe(sql, ...params);
     return { rows: result, rowCount: Array.isArray(result) ? result.length : 0 };
-  }
-
-  private async executeInsert(config: DatabaseConfig) {
-    this.validateTable(config.table);
-    if (!config.fields || Object.keys(config.fields).length === 0) {
-      throw new BadRequestException('Fields are required for INSERT');
-    }
-    const keys = Object.keys(config.fields);
-    keys.forEach((k) => this.validateColumnName(k));
-    const cols = keys.map((k) => `"${k}"`).join(', ');
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-    const sql = `INSERT INTO "${config.table}" (${cols}) VALUES (${placeholders}) RETURNING *`;
-    const result = await this.prisma.$queryRawUnsafe(sql, ...keys.map((k) => config.fields![k]));
-    return { rows: result, rowCount: 1 };
-  }
-
-  private async executeUpdate(config: DatabaseConfig) {
-    this.validateTable(config.table);
-    if (!config.fields) throw new BadRequestException('Fields are required for UPDATE');
-    if (!config.where) throw new BadRequestException('WHERE clause is required for UPDATE');
-    const fieldKeys = Object.keys(config.fields);
-    fieldKeys.forEach((k) => this.validateColumnName(k));
-    const setCols = fieldKeys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
-    const whereKeys = Object.keys(config.where);
-    whereKeys.forEach((k) => this.validateColumnName(k));
-    const whereClause = whereKeys.map((k, i) => `"${k}" = $${fieldKeys.length + i + 1}`).join(' AND ');
-    const params = [...fieldKeys.map((k) => config.fields![k]), ...whereKeys.map((k) => config.where![k])];
-    const sql = `UPDATE "${config.table}" SET ${setCols} WHERE ${whereClause} RETURNING *`;
-    const result = await this.prisma.$queryRawUnsafe(sql, ...params);
-    return { rows: result, rowCount: Array.isArray(result) ? result.length : 0 };
-  }
-
-  private async executeDelete(config: DatabaseConfig) {
-    this.validateTable(config.table);
-    if (!config.where) throw new BadRequestException('WHERE clause is required for DELETE');
-    const { clause, params } = this.buildWhereClause(config.where);
-    const sql = `DELETE FROM "${config.table}" ${clause} RETURNING *`;
-    const result = await this.prisma.$queryRawUnsafe(sql, ...params);
-    return { rows: result, rowCount: Array.isArray(result) ? result.length : 0 };
-  }
-
-  private async executeRaw(config: DatabaseConfig) {
-    throw new BadRequestException(
-      'Raw SQL queries are disabled for security. Use SELECT, INSERT, UPDATE, or DELETE operations instead.',
-    );
   }
 }

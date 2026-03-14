@@ -5,7 +5,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: ${DB_USER:-minizapier}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-minizapier123}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD environment variable is required}
       POSTGRES_DB: ${DB_NAME:-minizapier}
     volumes:
       - pg-data:/var/lib/postgresql/data
@@ -30,7 +30,7 @@ services:
       context: .
       dockerfile: apps/backend/Dockerfile
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-minizapier}:${DB_PASSWORD:-minizapier123}@postgres:5432/${DB_NAME:-minizapier}
+      DATABASE_URL: postgresql://${DB_USER:-minizapier}:${DB_PASSWORD:?DB_PASSWORD is required}@postgres:5432/${DB_NAME:-minizapier}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET}
