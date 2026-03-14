@@ -26,14 +26,16 @@ Plans:
 - [x] 01-02-PLAN.md — SSRF protection, DB restriction, JWT hardening, Docker secrets (SEC-02, SEC-03, SEC-04, SEC-05) ✅ 2025-01-30
 - [x] 01-03-PLAN.md — WebSocket room authorization + credential encryption (SEC-06, SEC-07) ✅ 2025-01-30
 
+**Status: ✅ COMPLETE**
+
 **Success Criteria:**
-- [ ] `sandboxed.processor.ts` removed, all actions execute through EngineService
-- [ ] ActionRegistry with Map<string, ActionHandler> replaces switch-case
-- [ ] HTTP action rejects internal IPs (127.0.0.1, 10.x, 169.254.x, ::1, fc00::/7)
-- [ ] DB action restricts to SELECT-only on non-sensitive tables (`users` excluded)
-- [ ] No hardcoded secrets in any committed file
-- [ ] WebSocket rejects connections without valid JWT, room-join verifies ownership
-- [ ] CredentialService with AES-256-GCM encrypt/decrypt available (wired into actions in Phase 4)
+- [x] `sandboxed.processor.ts` removed, all actions execute through EngineService ✅
+- [x] ActionRegistry with Map<string, ActionHandler> replaces switch-case ✅
+- [x] HTTP action rejects internal IPs (127.0.0.1, 10.x, 169.254.x, ::1, fc00::/7) ✅
+- [x] DB action restricts to SELECT-only on non-sensitive tables (`users` excluded) ✅
+- [x] No hardcoded secrets in any committed file ✅
+- [x] WebSocket rejects connections without valid JWT, room-join verifies ownership ✅
+- [x] CredentialService with AES-256-GCM encrypt/decrypt available (wired into actions in Phase 4) ✅
 
 ---
 
