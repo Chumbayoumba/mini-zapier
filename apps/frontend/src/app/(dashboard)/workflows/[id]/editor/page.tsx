@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useEffect, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   ReactFlow,
   MiniMap,
@@ -22,7 +22,7 @@ import TriggerNode from '@/components/editor/nodes/trigger-node';
 import ActionNode from '@/components/editor/nodes/action-node';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
 import { Button } from '@/components/ui/button';
-import { Save, Play, Zap, Undo2, Redo2, Maximize } from 'lucide-react';
+import { Save, Play, ArrowLeft, Maximize, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 
@@ -42,6 +42,7 @@ const ACTION_TYPES = [
 
 function EditorCanvas() {
   const params = useParams();
+  const router = useRouter();
   const workflowId = params.id as string;
   const { data: workflow } = useWorkflow(workflowId);
   const updateWorkflow = useUpdateWorkflow();
@@ -130,66 +131,82 @@ function EditorCanvas() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)]">
-      {/* Sidebar - Node Palette */}
-      <div className="w-60 border-r bg-card p-4 overflow-y-auto shrink-0">
-        <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-3">
-          Triggers
-        </h3>
-        {TRIGGER_TYPES.map((t) => (
-          <div
-            key={t.type}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('application/reactflow-type', t.type);
-              e.dataTransfer.setData('application/reactflow-label', t.label);
-              e.dataTransfer.effectAllowed = 'move';
-            }}
-            className="mb-2 cursor-grab rounded-lg border-2 p-2.5 text-sm font-medium hover:shadow-md transition-all active:cursor-grabbing"
-            style={{ borderColor: t.color, background: `${t.color}10` }}
-          >
-            <span className="mr-2">{t.icon}</span>
-            {t.label}
-          </div>
-        ))}
+      {/* Node Palette */}
+      <div className="w-60 border-r bg-card overflow-y-auto shrink-0">
+        <div className="p-4 border-b">
+          <h3 className="font-semibold text-sm">Components</h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Drag to canvas to add</p>
+        </div>
 
-        <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-3 mt-6">
-          Actions
-        </h3>
-        {ACTION_TYPES.map((a) => (
-          <div
-            key={a.type}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('application/reactflow-type', a.type);
-              e.dataTransfer.setData('application/reactflow-label', a.label);
-              e.dataTransfer.effectAllowed = 'move';
-            }}
-            className="mb-2 cursor-grab rounded-lg border-2 p-2.5 text-sm font-medium hover:shadow-md transition-all active:cursor-grabbing"
-            style={{ borderColor: a.color, background: `${a.color}10` }}
-          >
-            <span className="mr-2">{a.icon}</span>
-            {a.label}
-          </div>
-        ))}
+        <div className="p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
+            Triggers
+          </p>
+          {TRIGGER_TYPES.map((t) => (
+            <div
+              key={t.type}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/reactflow-type', t.type);
+                e.dataTransfer.setData('application/reactflow-label', t.label);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              className="mb-1.5 cursor-grab rounded-lg border p-2.5 text-sm font-medium hover:shadow-md transition-all active:cursor-grabbing flex items-center gap-2"
+              style={{ borderColor: `${t.color}40`, background: `${t.color}08` }}
+            >
+              <span className="text-base leading-none">{t.icon}</span>
+              <span>{t.label}</span>
+              <div className="ml-auto w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
+            </div>
+          ))}
+
+          <div className="my-3 border-t" />
+
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
+            Actions
+          </p>
+          {ACTION_TYPES.map((a) => (
+            <div
+              key={a.type}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/reactflow-type', a.type);
+                e.dataTransfer.setData('application/reactflow-label', a.label);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              className="mb-1.5 cursor-grab rounded-lg border p-2.5 text-sm font-medium hover:shadow-md transition-all active:cursor-grabbing flex items-center gap-2"
+              style={{ borderColor: `${a.color}40`, background: `${a.color}08` }}
+            >
+              <span className="text-base leading-none">{a.icon}</span>
+              <span>{a.label}</span>
+              <div className="ml-auto w-2 h-2 rounded-full" style={{ backgroundColor: a.color }} />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Canvas */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Toolbar */}
-        <div className="flex items-center gap-2 border-b px-4 py-2 bg-card">
-          <h2 className="font-semibold text-sm flex-1 truncate">
+        <div className="flex items-center gap-2 border-b px-3 py-2 bg-card">
+          <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground mr-1" onClick={() => router.push('/workflows')}>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline text-xs">Back</span>
+          </Button>
+          <div className="w-px h-5 bg-border" />
+          <h2 className="font-semibold text-sm flex-1 truncate px-1">
             {workflow?.name || 'Workflow Editor'}
           </h2>
-          <Button size="sm" variant="ghost" onClick={() => fitView({ padding: 0.2 })}>
+          <Button size="sm" variant="ghost" onClick={() => fitView({ padding: 0.2 })} title="Fit to view">
             <Maximize className="h-3.5 w-3.5" />
           </Button>
           <div className="w-px h-5 bg-border" />
-          <Button size="sm" variant="outline" onClick={handleSave} disabled={updateWorkflow.isPending}>
-            <Save className="h-3.5 w-3.5 mr-1.5" />
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleSave} disabled={updateWorkflow.isPending}>
+            {updateWorkflow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             Save
           </Button>
-          <Button size="sm" onClick={handleRun}>
-            <Play className="h-3.5 w-3.5 mr-1.5" />
+          <Button size="sm" className="gap-1.5 shadow-sm shadow-primary/20" onClick={handleRun}>
+            <Play className="h-3.5 w-3.5" />
             Run
           </Button>
         </div>
@@ -211,19 +228,19 @@ function EditorCanvas() {
             defaultEdgeOptions={{ type: 'animated', animated: true }}
             proOptions={{ hideAttribution: true }}
           >
-            <Controls />
+            <Controls className="!rounded-lg !border !shadow-sm" />
             <MiniMap
               nodeStrokeWidth={3}
               zoomable
               pannable
-              className="!bg-card !border !rounded-lg"
+              className="!bg-card !border !rounded-lg !shadow-sm"
             />
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           </ReactFlow>
         </div>
       </div>
 
-      {/* Node Config Panel */}
+      {/* Config Panel */}
       {selectedNode && <NodeConfigPanel />}
     </div>
   );

@@ -3,7 +3,7 @@
 import { useEditorStore } from '@/stores/editor-store';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Settings2 } from 'lucide-react';
 
 const TRIGGER_FIELDS: Record<string, { key: string; label: string; placeholder: string }[]> = {
   WEBHOOK: [
@@ -65,44 +65,59 @@ export function NodeConfigPanel() {
   };
 
   return (
-    <div className="w-72 border-l bg-card overflow-y-auto">
+    <div className="w-72 border-l bg-card overflow-y-auto shrink-0">
+      {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <div>
-          <p className="text-sm font-semibold">{selectedNode.data?.label as string}</p>
-          <p className="text-xs text-muted-foreground">{nodeType}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold truncate">{selectedNode.data?.label as string}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{nodeType}</p>
+          </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setSelectedNode(null)}>
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => setSelectedNode(null)}>
           <X className="h-4 w-4" />
         </Button>
       </div>
 
       <div className="p-4 space-y-4">
+        {/* General section */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground">Node Label</label>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">General</p>
+          <label className="text-xs font-medium">Node Label</label>
           <Input
-            className="mt-1"
+            className="mt-1 h-8 text-sm"
             value={(selectedNode.data?.label as string) || ''}
             onChange={(e) => updateNodeData(selectedNode.id, { label: e.target.value })}
           />
         </div>
 
-        {fields?.map((field) => (
-          <div key={field.key}>
-            <label className="text-xs font-medium text-muted-foreground">{field.label}</label>
-            <Input
-              className="mt-1"
-              placeholder={field.placeholder}
-              value={config[field.key] || ''}
-              onChange={(e) => handleChange(field.key, e.target.value)}
-            />
+        {/* Configuration section */}
+        {fields && fields.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Configuration</p>
+            <div className="space-y-3">
+              {fields.map((field) => (
+                <div key={field.key}>
+                  <label className="text-xs font-medium">{field.label}</label>
+                  <Input
+                    className="mt-1 h-8 text-sm"
+                    placeholder={field.placeholder}
+                    value={config[field.key] || ''}
+                    onChange={(e) => handleChange(field.key, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
 
+        {/* Notes section */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground">Description</label>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Notes</p>
           <Input
-            className="mt-1"
-            placeholder="Optional note"
+            className="h-8 text-sm"
+            placeholder="Optional description"
             value={(selectedNode.data?.description as string) || ''}
             onChange={(e) => updateNodeData(selectedNode.id, { description: e.target.value })}
           />

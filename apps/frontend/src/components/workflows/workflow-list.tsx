@@ -2,6 +2,7 @@
 
 import { WorkflowCard } from './workflow-card';
 import { CreateWorkflowDialog } from './create-workflow-dialog';
+import { Workflow as WorkflowIcon } from 'lucide-react';
 import type { Workflow } from '@/types';
 
 interface WorkflowListProps {
@@ -13,9 +14,17 @@ interface WorkflowListProps {
 export function WorkflowList({ workflows, onRun, onDelete }: WorkflowListProps) {
   if (!workflows.length) {
     return (
-      <div className="text-center py-12 space-y-4">
-        <p className="text-muted-foreground">No workflows yet. Create your first one!</p>
-        <CreateWorkflowDialog />
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+          <WorkflowIcon className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <p className="font-semibold text-lg">No workflows yet</p>
+        <p className="text-muted-foreground text-sm mt-1 max-w-[280px]">
+          Create your first workflow to start automating tasks.
+        </p>
+        <div className="mt-4">
+          <CreateWorkflowDialog />
+        </div>
       </div>
     );
   }

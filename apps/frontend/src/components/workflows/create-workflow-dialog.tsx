@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2, X } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -37,31 +37,47 @@ export function CreateWorkflowDialog() {
 
   if (!open) {
     return (
-      <Button onClick={() => setOpen(true)}>
-        <Plus className="h-4 w-4 mr-1" /> New Workflow
+      <Button onClick={() => setOpen(true)} className="gap-2">
+        <Plus className="h-4 w-4" /> New Workflow
       </Button>
     );
   }
 
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-lg space-y-3 w-80">
-      <h3 className="font-semibold text-sm">Create Workflow</h3>
-      <Input
-        placeholder="Workflow name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        autoFocus
-      />
-      <Input
-        placeholder="Description (optional)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-      <div className="flex gap-2">
-        <Button size="sm" onClick={handleCreate} disabled={loading}>
+    <div className="rounded-xl border bg-card p-5 shadow-lg space-y-4 w-80">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-sm">Create Workflow</h3>
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setOpen(false)}>
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs font-medium mb-1 block">Name</label>
+          <Input
+            placeholder="My Awesome Workflow"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-8 text-sm"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium mb-1 block">Description</label>
+          <Input
+            placeholder="Optional description..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="h-8 text-sm"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Button size="sm" onClick={handleCreate} disabled={loading} className="flex-1 gap-1.5">
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
           {loading ? 'Creating...' : 'Create'}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        <Button size="sm" variant="outline" onClick={() => setOpen(false)}>
           Cancel
         </Button>
       </div>

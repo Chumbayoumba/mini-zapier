@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   Zap,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRouter } from 'next/navigation';
@@ -32,41 +33,50 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-card">
-      <div className="flex h-16 items-center gap-2 border-b px-6">
-        <Zap className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold">Mini-Zapier</span>
+    <aside className="flex h-screen w-64 flex-col border-r bg-card shrink-0">
+      {/* Brand */}
+      <div className="flex h-16 items-center gap-2.5 border-b px-5">
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600 shadow-md shadow-indigo-500/25">
+          <Zap className="h-4 w-4 text-white" />
+        </div>
+        <span className="text-lg font-bold tracking-tight">FlowForge</span>
       </div>
 
-      <nav className="flex-1 space-y-1 p-4">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname.startsWith(item.href);
+          const isActive =
+            item.href === '/dashboard'
+              ? pathname === '/dashboard'
+              : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-primary/10 text-primary'
+                  ? 'bg-primary/10 text-primary shadow-sm'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
               )}
             >
-              <Icon className="h-4 w-4" />
-              {item.label}
+              <Icon className={cn('h-4 w-4 shrink-0', isActive && 'text-primary')} />
+              <span className="flex-1">{item.label}</span>
+              {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary/50" />}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t p-4">
+      {/* Logout */}
+      <div className="border-t p-3">
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-150"
         >
           <LogOut className="h-4 w-4" />
-          Logout
+          Log out
         </button>
       </div>
     </aside>

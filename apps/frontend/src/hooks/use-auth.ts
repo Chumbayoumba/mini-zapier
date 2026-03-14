@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 
 export function useLogin() {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   return useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
@@ -16,9 +16,7 @@ export function useLogin() {
       return res.data.data || res.data;
     },
     onSuccess: (data) => {
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      setUser(data.user);
+      setAuth(data.user, data.accessToken, data.refreshToken);
       toast.success('Logged in successfully');
       router.push('/dashboard');
     },
@@ -30,7 +28,7 @@ export function useLogin() {
 
 export function useRegister() {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   return useMutation({
     mutationFn: async (data: { email: string; password: string; name: string }) => {
@@ -38,14 +36,13 @@ export function useRegister() {
       return res.data.data || res.data;
     },
     onSuccess: (data) => {
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
-      setUser(data.user);
+      setAuth(data.user, data.accessToken, data.refreshToken);
       toast.success('Account created');
       router.push('/dashboard');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Registration failed');
+    onError: (error: unknown) => {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || 'Registration failed');
     },
   });
 }

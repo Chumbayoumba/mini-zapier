@@ -8,7 +8,7 @@ import { useRegister } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap } from 'lucide-react';
+import { Zap, Loader2 } from 'lucide-react';
 
 const schema = z.object({
   name: z.string().min(2),
@@ -25,45 +25,66 @@ export default function RegisterPage() {
   });
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center gap-2">
-            <Zap className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold">Mini-Zapier</span>
-          </div>
+    <div>
+      {/* Brand mark (visible on mobile where sidebar is hidden) */}
+      <div className="flex items-center justify-center gap-2.5 mb-8 lg:hidden">
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-500/25">
+          <Zap className="h-5 w-5 text-white" />
         </div>
-        <CardTitle>Create Account</CardTitle>
-        <CardDescription>Start automating your workflows</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit((data) => reg.mutate(data))} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Name</label>
-            <Input {...register('name')} placeholder="John Doe" />
-            {errors.name && <p className="text-sm text-destructive">{errors.name.message as string}</p>}
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input {...register('email')} type="email" placeholder="you@example.com" />
-            {errors.email && <p className="text-sm text-destructive">{errors.email.message as string}</p>}
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <Input {...register('password')} type="password" placeholder="••••••" />
-            {errors.password && <p className="text-sm text-destructive">{errors.password.message as string}</p>}
-          </div>
-          <Button type="submit" className="w-full" disabled={reg.isPending}>
-            {reg.isPending ? 'Creating account...' : 'Create Account'}
-          </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{' '}
-            <Link href="/login" className="text-primary hover:underline">
-              Sign in
-            </Link>
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+        <span className="text-xl font-bold tracking-tight">FlowForge</span>
+      </div>
+
+      <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/30 dark:border dark:border-white/10">
+        <CardHeader className="text-center pb-2 pt-8">
+          <CardTitle className="text-2xl font-bold">Create your account</CardTitle>
+          <CardDescription className="text-sm">Start automating in under a minute</CardDescription>
+        </CardHeader>
+        <CardContent className="px-8 pb-8 pt-4">
+          <form onSubmit={handleSubmit((data) => reg.mutate(data))} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Full Name</label>
+              <Input {...register('name')} placeholder="John Doe" className="h-10" />
+              {errors.name && <p className="text-xs text-destructive">{errors.name.message as string}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Email</label>
+              <Input {...register('email')} type="email" placeholder="you@example.com" className="h-10" />
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message as string}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Password</label>
+              <Input {...register('password')} type="password" placeholder="••••••••" className="h-10" />
+              {errors.password && <p className="text-xs text-destructive">{errors.password.message as string}</p>}
+            </div>
+            <Button type="submit" className="w-full h-10 font-semibold" disabled={reg.isPending}>
+              {reg.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account…</>
+              ) : (
+                'Create Account'
+              )}
+            </Button>
+
+            <p className="text-center text-xs text-muted-foreground">
+              By creating an account you agree to our{' '}
+              <button type="button" className="text-primary hover:text-primary/80 transition-colors">Terms</button>
+              {' '}and{' '}
+              <button type="button" className="text-primary hover:text-primary/80 transition-colors">Privacy Policy</button>
+            </p>
+
+            <div className="relative my-1">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs"><span className="bg-card px-3 text-muted-foreground">or</span></div>
+            </div>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <Link href="/login" className="font-medium text-primary hover:text-primary/80 transition-colors">
+                Sign in
+              </Link>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
