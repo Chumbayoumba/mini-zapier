@@ -81,3 +81,32 @@ export function useActivateWorkflow() {
     },
   });
 }
+
+export function useDeactivateWorkflow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/workflows/${id}/deactivate`);
+      return res.data.data || res.data;
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['workflow', id] });
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      toast.success('Workflow paused');
+    },
+  });
+}
+
+export function useExecuteWorkflow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data?: Record<string, unknown> }) => {
+      const res = await api.post(`/workflows/${id}/execute`, data || {});
+      return res.data.data || res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['executions'] });
+      toast.success('Workflow execution started');
+    },
+  });
+}

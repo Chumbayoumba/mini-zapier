@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { WorkflowsService } from './workflows.service';
 import { EngineService } from '../engine/engine.service';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
@@ -18,12 +18,16 @@ export class WorkflowsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new workflow' })
+  @ApiResponse({ status: 201, description: 'Workflow created successfully' })
   async create(@CurrentUser('sub') userId: string, @Body() dto: CreateWorkflowDto) {
     return this.workflowsService.create(userId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'List user workflows' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'List of workflows' })
   async findAll(
     @CurrentUser('sub') userId: string,
     @Query('page') page?: number,

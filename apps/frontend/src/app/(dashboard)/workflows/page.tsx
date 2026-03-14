@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useWorkflows, useDeleteWorkflow, useActivateWorkflow } from '@/hooks/use-workflows';
+import { useWorkflows, useDeleteWorkflow, useActivateWorkflow, useDeactivateWorkflow } from '@/hooks/use-workflows';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +34,7 @@ export default function WorkflowsPage() {
   const { data, isLoading } = useWorkflows(page);
   const deleteWorkflow = useDeleteWorkflow();
   const activateWorkflow = useActivateWorkflow();
+  const deactivateWorkflow = useDeactivateWorkflow();
 
   const workflows: Workflow[] = data?.workflows || [];
   const totalPages = data?.total ? Math.ceil(data.total / (data.limit || 10)) : 1;
@@ -136,7 +137,9 @@ export default function WorkflowsPage() {
                   <div className="min-w-0 flex-1 mr-2">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[wf.status] || 'bg-gray-400'}`} />
-                      <CardTitle className="text-base truncate">{wf.name}</CardTitle>
+                      <Link href={`/workflows/${wf.id}`} className="hover:underline">
+                        <CardTitle className="text-base truncate">{wf.name}</CardTitle>
+                      </Link>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 pl-4">
                       {wf.description || 'No description'}
@@ -169,7 +172,12 @@ export default function WorkflowsPage() {
                         <Play className="h-3 w-3" /> Activate
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => deactivateWorkflow.mutate(wf.id)}
+                      >
                         <Pause className="h-3 w-3" /> Pause
                       </Button>
                     )}

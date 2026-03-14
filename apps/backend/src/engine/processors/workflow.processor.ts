@@ -12,7 +12,7 @@ interface WorkflowJobData {
 export default async function processWorkflow(job: Job<WorkflowJobData>): Promise<any> {
   const { executionId, workflowId, definition, triggerData } = job.data;
 
-  console.log(`[Processor] Starting workflow ${workflowId}, execution ${executionId}`);
+  process.stdout.write(JSON.stringify({ level: 'info', msg: 'Processor starting', workflowId, executionId }) + '\n');
 
   const nodes: any[] = definition.nodes || [];
   const edges: any[] = definition.edges || [];
@@ -110,7 +110,7 @@ export default async function processWorkflow(job: Job<WorkflowJobData>): Promis
     }
   }
 
-  console.log(`[Processor] Completed workflow ${workflowId}, execution ${executionId}`);
+  process.stdout.write(JSON.stringify({ level: 'info', msg: 'Processor completed', workflowId, executionId }) + '\n');
   return { executionId, results };
 }
 
