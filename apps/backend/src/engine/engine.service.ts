@@ -60,7 +60,7 @@ export class EngineService {
     try {
       const executionOrder = this.getExecutionOrder(nodes, edges);
 
-      const TRIGGER_ONLY_TYPES = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'];
+      const TRIGGER_ONLY_TYPES = ['WEBHOOK', 'CRON', 'EMAIL'];
       for (const node of executionOrder) {
         const isTriggerNode =
           node.type === 'triggerNode' ||
@@ -178,7 +178,7 @@ export class EngineService {
     const completedNodeIds = new Set(execution.stepLogs.map((l) => l.nodeId));
 
     try {
-      const TRIGGER_ONLY_TYPES = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'];
+      const TRIGGER_ONLY_TYPES = ['WEBHOOK', 'CRON', 'EMAIL'];
       for (const node of executionOrder) {
         // Skip completed steps
         if (completedNodeIds.has(node.id)) continue;
