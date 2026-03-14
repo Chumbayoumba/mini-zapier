@@ -2,7 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActionRegistry } from './action-registry';
-import { ExecutionContext } from './execution-context';
+import {
+  ExecutionContext,
+  RetryConfig,
+  WorkflowErrorConfig,
+  DEFAULT_ERROR_CONFIG,
+} from './execution-context';
 
 @Injectable()
 export class EngineService {
@@ -29,6 +34,10 @@ export class EngineService {
 
     const definition = workflow.definition as any;
     const { nodes, edges, integrations } = definition;
+    const errorConfig: WorkflowErrorConfig =
+      (workflow as any).errorConfig
+        ? { ...DEFAULT_ERROR_CONFIG, ...((workflow as any).errorConfig as any) }
+        : DEFAULT_ERROR_CONFIG;
 
     const context: ExecutionContext = {
       executionId: execution.id,
@@ -41,18 +50,39 @@ export class EngineService {
     this.eventEmitter.emit('execution.started', { executionId: execution.id, workflowId });
 
     try {
-      // Build execution order (topological sort based on edges)
       const executionOrder = this.getExecutionOrder(nodes, edges);
 
       const TRIGGER_ONLY_TYPES = ['WEBHOOK', 'CRON', 'EMAIL'];
       for (const node of executionOrder) {
-        const isTriggerNode = node.type === 'triggerNode' || node.id?.startsWith('trigger-') || TRIGGER_ONLY_TYPES.includes(node.data.type);
+        const isTriggerNode =
+          node.type === 'triggerNode' ||
+          node.id?.startsWith('trigger-') ||
+          TRIGGER_ONLY_TYPES.includes(node.data.type);
         if (isTriggerNode) {
           context.stepResults[node.id] = triggerData;
           continue;
         }
 
-        await this.executeStep(node, context);
+        // Pause check before each step
+        const execCheck = await this.prisma.workflowExecution.findUnique({
+          where: { id: context.executionId },
+          select: { status: true },
+        });
+
+        if (execCheck?.status === 'PAUSED') {
+          await this.prisma.workflowExecution.update({
+            where: { id: context.executionId },
+            data: { lastCompletedNodeId: context.lastCompletedNodeId || null },
+          });
+          this.eventEmitter.emit('execution.paused', {
+            executionId: context.executionId,
+            workflowId: context.workflowId,
+          });
+          return context.executionId;
+        }
+
+        await this.executeStepWithRetry(node, context, errorConfig.retry);
+        context.lastCompletedNodeId = node.id;
       }
 
       const endTime = new Date();
@@ -91,9 +121,131 @@ export class EngineService {
     }
   }
 
-  private async executeStep(node: any, context: ExecutionContext) {
+  async resumeWorkflow(executionId: string): Promise<string> {
+    const execution = await this.prisma.workflowExecution.findUnique({
+      where: { id: executionId },
+      include: {
+        workflow: true,
+        stepLogs: { where: { status: 'COMPLETED' }, orderBy: { startedAt: 'asc' } },
+      },
+    });
+
+    if (!execution) throw new Error(`Execution ${executionId} not found`);
+    if (execution.status !== 'PAUSED') throw new Error('Can only resume paused executions');
+
+    const definition = execution.workflow.definition as any;
+    const { nodes, edges, integrations } = definition;
+    const errorConfig: WorkflowErrorConfig =
+      (execution.workflow as any).errorConfig
+        ? { ...DEFAULT_ERROR_CONFIG, ...((execution.workflow as any).errorConfig as any) }
+        : DEFAULT_ERROR_CONFIG;
+
+    const context: ExecutionContext = {
+      executionId,
+      workflowId: execution.workflowId,
+      triggerData: execution.triggerData as any,
+      stepResults: {},
+      integrations,
+      lastCompletedNodeId: execution.lastCompletedNodeId || undefined,
+      correlationId: execution.correlationId || undefined,
+    };
+
+    // Rebuild stepResults from completed step logs
+    for (const log of execution.stepLogs) {
+      context.stepResults[log.nodeId] = log.output;
+    }
+
+    // Update execution status
+    await this.prisma.workflowExecution.update({
+      where: { id: executionId },
+      data: { status: 'RUNNING', resumedAt: new Date() },
+    });
+
+    this.eventEmitter.emit('execution.resumed', {
+      executionId,
+      workflowId: execution.workflowId,
+    });
+
+    const executionOrder = this.getExecutionOrder(nodes, edges);
+    const completedNodeIds = new Set(execution.stepLogs.map((l) => l.nodeId));
+
+    try {
+      const TRIGGER_ONLY_TYPES = ['WEBHOOK', 'CRON', 'EMAIL'];
+      for (const node of executionOrder) {
+        // Skip completed steps
+        if (completedNodeIds.has(node.id)) continue;
+
+        const isTriggerNode =
+          node.type === 'triggerNode' ||
+          node.id?.startsWith('trigger-') ||
+          TRIGGER_ONLY_TYPES.includes(node.data.type);
+        if (isTriggerNode) {
+          context.stepResults[node.id] = context.triggerData;
+          continue;
+        }
+
+        // Pause check
+        const execCheck = await this.prisma.workflowExecution.findUnique({
+          where: { id: executionId },
+          select: { status: true },
+        });
+        if (execCheck?.status === 'PAUSED') {
+          await this.prisma.workflowExecution.update({
+            where: { id: executionId },
+            data: { lastCompletedNodeId: context.lastCompletedNodeId || null },
+          });
+          this.eventEmitter.emit('execution.paused', {
+            executionId,
+            workflowId: execution.workflowId,
+          });
+          return executionId;
+        }
+
+        await this.executeStepWithRetry(node, context, errorConfig.retry);
+        context.lastCompletedNodeId = node.id;
+      }
+
+      const endTime = new Date();
+      await this.prisma.workflowExecution.update({
+        where: { id: executionId },
+        data: {
+          status: 'COMPLETED',
+          completedAt: endTime,
+          duration: endTime.getTime() - (execution.startedAt?.getTime() || Date.now()),
+        },
+      });
+
+      this.eventEmitter.emit('execution.completed', {
+        executionId,
+        workflowId: execution.workflowId,
+      });
+      return executionId;
+    } catch (error: any) {
+      await this.prisma.workflowExecution.update({
+        where: { id: executionId },
+        data: {
+          status: 'FAILED',
+          error: error.message,
+          completedAt: new Date(),
+        },
+      });
+      this.eventEmitter.emit('execution.failed', {
+        executionId,
+        workflowId: execution.workflowId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  private async executeStepWithRetry(
+    node: any,
+    context: ExecutionContext,
+    retryConfig: RetryConfig,
+  ): Promise<any> {
     const startedAt = new Date();
 
+    // Create step log once
     const stepLog = await this.prisma.executionStepLog.create({
       data: {
         executionId: context.executionId,
@@ -112,51 +264,85 @@ export class EngineService {
       nodeId: node.id,
     });
 
-    try {
-      const input = { ...node.data.config, _context: { ...context.stepResults, triggerData: context.triggerData, integrations: context.integrations } };
-      const result = await this.executeAction(node.data.type, input);
+    const { maxAttempts, baseDelayMs, maxDelayMs, jitter } = retryConfig;
+    let lastError: Error | null = null;
 
-      context.stepResults[node.id] = result;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const input = {
+          ...node.data.config,
+          _context: {
+            ...context.stepResults,
+            triggerData: context.triggerData,
+            integrations: context.integrations,
+          },
+        };
+        const result = await this.executeAction(node.data.type, input);
 
-      const completedAt = new Date();
-      await this.prisma.executionStepLog.update({
-        where: { id: stepLog.id },
-        data: {
-          status: 'COMPLETED',
-          output: result as any,
-          completedAt,
-          duration: completedAt.getTime() - startedAt.getTime(),
-        },
-      });
+        context.stepResults[node.id] = result;
 
-      this.eventEmitter.emit('step.completed', {
-        executionId: context.executionId,
-        stepId: stepLog.id,
-        nodeId: node.id,
-        result,
-      });
+        const completedAt = new Date();
+        await this.prisma.executionStepLog.update({
+          where: { id: stepLog.id },
+          data: {
+            status: 'COMPLETED',
+            output: result as any,
+            completedAt,
+            duration: completedAt.getTime() - startedAt.getTime(),
+            retryCount: attempt - 1,
+          },
+        });
 
-      return result;
-    } catch (error: any) {
-      await this.prisma.executionStepLog.update({
-        where: { id: stepLog.id },
-        data: {
-          status: 'FAILED',
-          error: error.message,
-          completedAt: new Date(),
-          duration: new Date().getTime() - startedAt.getTime(),
-        },
-      });
+        this.eventEmitter.emit('step.completed', {
+          executionId: context.executionId,
+          stepId: stepLog.id,
+          nodeId: node.id,
+          result,
+        });
 
-      this.eventEmitter.emit('step.failed', {
-        executionId: context.executionId,
-        stepId: stepLog.id,
-        nodeId: node.id,
-        error: error.message,
-      });
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        if (attempt < maxAttempts) {
+          const expDelay = Math.min(baseDelayMs * Math.pow(2, attempt - 1), maxDelayMs);
+          const jitterMs = jitter ? Math.random() * expDelay * 0.1 : 0;
+          await new Promise((r) => setTimeout(r, expDelay + jitterMs));
 
-      throw error;
+          // Update retry count on intermediate failure
+          await this.prisma.executionStepLog.update({
+            where: { id: stepLog.id },
+            data: { retryCount: attempt },
+          });
+
+          this.logger.warn(
+            `Step ${node.id} attempt ${attempt}/${maxAttempts} failed: ${error.message}. Retrying...`,
+          );
+        }
+      }
     }
+
+    // All attempts exhausted
+    const completedAt = new Date();
+    await this.prisma.executionStepLog.update({
+      where: { id: stepLog.id },
+      data: {
+        status: 'FAILED',
+        error: lastError!.message,
+        errorStack: lastError!.stack,
+        completedAt,
+        duration: completedAt.getTime() - startedAt.getTime(),
+        retryCount: maxAttempts - 1,
+      },
+    });
+
+    this.eventEmitter.emit('step.failed', {
+      executionId: context.executionId,
+      stepId: stepLog.id,
+      nodeId: node.id,
+      error: lastError!.message,
+    });
+
+    throw lastError!;
   }
 
   private async executeAction(type: string, input: any): Promise<any> {

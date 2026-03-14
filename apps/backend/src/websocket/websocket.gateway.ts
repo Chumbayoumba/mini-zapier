@@ -141,4 +141,14 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
   handleStepFailed(payload: any) {
     this.emitToRoom(payload.executionId, 'step:failed', payload);
   }
+
+  @OnEvent('execution.paused')
+  handleExecutionPaused(payload: any) {
+    this.emitToRoom(payload.executionId, 'execution:paused', payload);
+  }
+
+  @OnEvent('execution.resumed')
+  handleExecutionResumed(payload: any) {
+    this.emitToRoom(payload.executionId, 'execution:resumed', payload);
+  }
 }
