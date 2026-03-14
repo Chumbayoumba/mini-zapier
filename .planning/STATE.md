@@ -6,14 +6,14 @@
 
 ## Current Focus
 Phase: 01-security-hardening
-Current Plan: 2 of 3
-Next action: `gsd:execute-phase 1` (01-02-PLAN.md)
+Current Plan: 3 of 3 ✅
+Next action: `gsd:plan-phase 2` (Phase 1 complete, ready for Phase 2)
 
 ## Phase Status
 
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
-| 1 | Security Hardening & Architecture Cleanup | 🔵 In Progress | 1/3 complete |
+| 1 | Security Hardening & Architecture Cleanup | ✅ Complete | 3/3 complete |
 | 2 | Engine Reliability & Error Handling | ⬜ Not started | — |
 | 3 | Triggers — Fix & Complete | ⬜ Not started | — |
 | 4 | Actions — Complete & Harden | ⬜ Not started | — |
@@ -36,6 +36,12 @@ Next action: `gsd:execute-phase 1` (01-02-PLAN.md)
 | Recharts for dashboard charts | Lightweight, React-native, good defaults | 2025-01-27 |
 | zundo for undo/redo | Zustand middleware, works with existing store | 2025-01-27 |
 | ActionRegistry uses Map + OnModuleInit | O(1) lookup, NestJS lifecycle-aware registration | 2025-01-30 |
+| isPrivateIp treats invalid IPs as private | Fail-closed — unparseable IPs blocked for safety | 2025-01-30 |
+| DNS resolves both A+AAAA, fail-closed if both fail | Ensures IPv6 private IPs can't bypass SSRF | 2025-01-30 |
+| SELECT-only database action, dead code removed | executeInsert/Update/Delete removed after guard | 2025-01-30 |
+| WebSocket room-join ownership via Prisma | findFirst with workflow include for execution, compound where for workflow | 2025-01-30 |
+| CredentialService iv:authTag:ciphertext format | Colon-separated base64 for human-debuggable encrypted values | 2025-01-30 |
+| CREDENTIAL_ENCRYPTION_KEY optional in dev | Production-required via Joi validation, allows easy local development | 2025-01-30 |
 
 ## Gotchas & Warnings
 

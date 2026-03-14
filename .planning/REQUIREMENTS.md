@@ -9,12 +9,12 @@
 ### Security (SEC)
 
 - [x] **SEC-01**: System removes dual execution path — all workflow execution goes through single EngineService with validated action handlers
-- [ ] **SEC-02**: HTTP Request action blocks internal IPs, metadata endpoints, and DNS rebinding attacks (SSRF protection)
-- [ ] **SEC-03**: Database action uses restricted PostgreSQL role with separate schema, excludes sensitive tables (users), enforces row-level filtering by userId
-- [ ] **SEC-04**: JWT secrets are loaded exclusively from environment variables with no hardcoded fallbacks; startup fails if secrets are missing
-- [ ] **SEC-05**: Docker Compose production config uses environment variables for all credentials, no hardcoded passwords
-- [ ] **SEC-06**: WebSocket gateway validates JWT token on connection and rejects unauthenticated clients
-- [ ] **SEC-07**: User credentials (SMTP, IMAP, Telegram tokens) stored encrypted at rest using AES-256-GCM
+- [x] **SEC-02**: HTTP Request action blocks internal IPs, metadata endpoints, and DNS rebinding attacks (SSRF protection)
+- [x] **SEC-03**: Database action uses restricted PostgreSQL role with separate schema, excludes sensitive tables (users), enforces row-level filtering by userId
+- [x] **SEC-04**: JWT secrets are loaded exclusively from environment variables with no hardcoded fallbacks; startup fails if secrets are missing
+- [x] **SEC-05**: Docker Compose production config uses environment variables for all credentials, no hardcoded passwords
+- [x] **SEC-06**: WebSocket gateway validates JWT token on connection and rejects unauthenticated clients
+- [x] **SEC-07**: User credentials (SMTP, IMAP, Telegram tokens) stored encrypted at rest using AES-256-GCM
 
 ### Triggers (TRG)
 
