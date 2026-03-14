@@ -17,7 +17,7 @@ export interface SendEmailActionConfig {
 }
 
 export interface TelegramActionConfig {
-  chatId: string;
+  chatId?: string;
   message: string;
   parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2';
 }

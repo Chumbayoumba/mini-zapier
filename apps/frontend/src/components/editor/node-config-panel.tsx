@@ -66,7 +66,7 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
   ],
   TELEGRAM: [
     { key: 'botToken', label: 'Bot Token', placeholder: '123456:ABC-DEF1234...', type: 'password', required: true, hint: 'Get from @BotFather on Telegram' },
-    { key: 'chatId', label: 'Chat ID', placeholder: '123456789', required: true, hint: 'Numeric chat or group ID' },
+    { key: 'chatId', label: 'Chat ID', placeholder: '123456789', hint: 'Optional — auto-detected from Telegram trigger data' },
     { key: 'message', label: 'Message', placeholder: '🔔 Alert: {{trigger.data}}', inputType: 'textarea', rows: 4, required: true, hint: 'Max 4096 characters. Supports {{template}} variables' },
     { key: 'parseMode', label: 'Parse Mode', inputType: 'select', placeholder: '', options: [
       { value: 'HTML', label: 'HTML' },
