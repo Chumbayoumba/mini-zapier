@@ -61,7 +61,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Foundation: Pino logging, schema migration, graceful shutdown, shared types ✅ 2025-01-30
-- [ ] 02-02-PLAN.md — Core engine: per-step retry, pause/resume, manual retry from failed step
+- [x] 02-02-PLAN.md — Core engine: per-step retry, pause/resume, manual retry from failed step ✅ 2025-01-31
 - [ ] 02-03-PLAN.md — Error handling: per-user notifications, error display, logging context
 
 **Success Criteria:**

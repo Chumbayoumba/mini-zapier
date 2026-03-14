@@ -47,13 +47,13 @@
 
 ### Execution Engine (EXE)
 
-- [ ] **EXE-01**: System executes workflow steps sequentially following DAG topological order through BullMQ job queue
+- [x] **EXE-01**: System executes workflow steps sequentially following DAG topological order through BullMQ job queue
 - [ ] **EXE-02**: Each execution step is logged with status (pending/running/completed/failed/skipped), input data, output data, duration, and error details
 - [ ] **EXE-03**: User can view real-time execution progress via WebSocket — nodes on canvas show live status (running spinner, green check, red X)
-- [ ] **EXE-04**: System supports workflow pause — user can pause a running workflow, which suspends execution after current step completes
-- [ ] **EXE-05**: User can resume a paused workflow from where it stopped
-- [ ] **EXE-06**: System retries failed steps with configurable exponential backoff (max attempts, base delay, jitter)
-- [ ] **EXE-07**: User can manually retry a failed execution from the failed step
+- [x] **EXE-04**: System supports workflow pause — user can pause a running workflow, which suspends execution after current step completes
+- [x] **EXE-05**: User can resume a paused workflow from where it stopped
+- [x] **EXE-06**: System retries failed steps with configurable exponential backoff (max attempts, base delay, jitter)
+- [x] **EXE-07**: User can manually retry a failed execution from the failed step
 - [x] **EXE-08**: System handles graceful shutdown — in-progress jobs are completed before worker stops
 
 ### Error Handling (ERR)
