@@ -24,13 +24,18 @@ export class EmailAction {
 
     this.logger.log(`Sending email to ${to}: ${subject}`);
 
-    const result = await this.transporter.sendMail({
-      from: this.configService.get('SMTP_USER'),
-      to,
-      subject,
-      [isHtml ? 'html' : 'text']: body,
-    });
+    try {
+      const result = await this.transporter.sendMail({
+        from: this.configService.get('SMTP_USER'),
+        to,
+        subject,
+        [isHtml ? 'html' : 'text']: body,
+      });
 
-    return { messageId: result.messageId, accepted: result.accepted };
+      return { messageId: result.messageId, accepted: result.accepted };
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${to}`, error instanceof Error ? error.stack : String(error));
+      throw new Error(`Email sending failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }

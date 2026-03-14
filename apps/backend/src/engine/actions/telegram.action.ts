@@ -16,15 +16,20 @@ export class TelegramAction {
 
     this.logger.log(`Sending Telegram message to ${chatId}`);
 
-    const response = await axios.post(
-      `https://api.telegram.org/bot${this.botToken}/sendMessage`,
-      {
-        chat_id: chatId,
-        text: message,
-        parse_mode: parseMode,
-      },
-    );
+    try {
+      const response = await axios.post(
+        `https://api.telegram.org/bot${this.botToken}/sendMessage`,
+        {
+          chat_id: chatId,
+          text: message,
+          parse_mode: parseMode,
+        },
+      );
 
-    return { ok: response.data.ok, messageId: response.data.result?.message_id };
+      return { ok: response.data.ok, messageId: response.data.result?.message_id };
+    } catch (error) {
+      this.logger.error(`Failed to send Telegram message to ${chatId}`, error instanceof Error ? error.stack : String(error));
+      throw new Error(`Telegram sending failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }

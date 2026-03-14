@@ -22,6 +22,8 @@ export class DatabaseAction {
     'triggers', 'workflow_executions', 'execution_step_logs',
   ];
 
+  private static readonly SAFE_IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
   constructor(private prisma: PrismaService) {}
 
   async execute(config: DatabaseConfig): Promise<any> {
@@ -45,17 +47,27 @@ export class DatabaseAction {
     }
   }
 
-  private validateTable(table?: string) {
+  private validateTable(table?: string): asserts table is string {
     if (!table) throw new BadRequestException('Table name is required');
+    if (!DatabaseAction.SAFE_IDENTIFIER.test(table)) {
+      throw new BadRequestException(`Invalid table name: '${table}'`);
+    }
     if (!this.ALLOWED_TABLES.includes(table)) {
       throw new BadRequestException(`Table '${table}' is not allowed`);
     }
   }
 
-  private buildWhereClause(where?: Record<string, any>): { clause: string; params: any[] } {
+  private validateColumnName(column: string): void {
+    if (!DatabaseAction.SAFE_IDENTIFIER.test(column)) {
+      throw new BadRequestException(`Invalid column name: '${column}'`);
+    }
+  }
+
+  private buildWhereClause(where?: Record<string, any>, paramOffset = 0): { clause: string; params: any[] } {
     if (!where || Object.keys(where).length === 0) return { clause: '', params: [] };
     const keys = Object.keys(where);
-    const clause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(' AND ');
+    keys.forEach((k) => this.validateColumnName(k));
+    const clause = keys.map((k, i) => `"${k}" = $${paramOffset + i + 1}`).join(' AND ');
     return { clause: `WHERE ${clause}`, params: keys.map((k) => where[k]) };
   }
 
@@ -63,7 +75,11 @@ export class DatabaseAction {
     this.validateTable(config.table);
     const { clause, params } = this.buildWhereClause(config.where);
     const limit = config.limit ? `LIMIT ${Number(config.limit)}` : '';
-    const orderBy = config.orderBy ? `ORDER BY "${config.orderBy}"` : '';
+    let orderBy = '';
+    if (config.orderBy) {
+      this.validateColumnName(config.orderBy);
+      orderBy = `ORDER BY "${config.orderBy}"`;
+    }
     const sql = `SELECT * FROM "${config.table}" ${clause} ${orderBy} ${limit}`;
     const result = await this.prisma.$queryRawUnsafe(sql, ...params);
     return { rows: result, rowCount: Array.isArray(result) ? result.length : 0 };
@@ -75,6 +91,7 @@ export class DatabaseAction {
       throw new BadRequestException('Fields are required for INSERT');
     }
     const keys = Object.keys(config.fields);
+    keys.forEach((k) => this.validateColumnName(k));
     const cols = keys.map((k) => `"${k}"`).join(', ');
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
     const sql = `INSERT INTO "${config.table}" (${cols}) VALUES (${placeholders}) RETURNING *`;
@@ -87,8 +104,10 @@ export class DatabaseAction {
     if (!config.fields) throw new BadRequestException('Fields are required for UPDATE');
     if (!config.where) throw new BadRequestException('WHERE clause is required for UPDATE');
     const fieldKeys = Object.keys(config.fields);
+    fieldKeys.forEach((k) => this.validateColumnName(k));
     const setCols = fieldKeys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
     const whereKeys = Object.keys(config.where);
+    whereKeys.forEach((k) => this.validateColumnName(k));
     const whereClause = whereKeys.map((k, i) => `"${k}" = $${fieldKeys.length + i + 1}`).join(' AND ');
     const params = [...fieldKeys.map((k) => config.fields![k]), ...whereKeys.map((k) => config.where![k])];
     const sql = `UPDATE "${config.table}" SET ${setCols} WHERE ${whereClause} RETURNING *`;

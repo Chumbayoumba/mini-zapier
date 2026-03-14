@@ -33,9 +33,29 @@ export type ActionType = 'HTTP_REQUEST' | 'SEND_EMAIL' | 'TELEGRAM' | 'DATABASE'
 export type ExecutionStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'PAUSED';
 export type StepStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
 
+export interface WorkflowNode {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  data: {
+    label: string;
+    type: string;
+    config?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+}
+
+export interface WorkflowEdge {
+  id: string;
+  source: string;
+  target: string;
+  type?: string;
+  animated?: boolean;
+}
+
 export interface WorkflowDefinition {
-  nodes: any[];
-  edges: any[];
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
 }
 
 export interface Trigger {

@@ -1,6 +1,7 @@
 import { Controller, Get, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 
@@ -26,8 +27,8 @@ export class UsersController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update user (admin only)' })
-  async update(@Param('id') id: string, @Body() data: { name?: string; role?: string }) {
-    return this.usersService.update(id, data);
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+    return this.usersService.update(id, dto);
   }
 
   @Delete(':id')

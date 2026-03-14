@@ -71,12 +71,16 @@ function EditorCanvas() {
 
   useEffect(() => {
     if (workflow?.definition) {
-      const def =
-        typeof workflow.definition === 'string'
+      let def: { nodes?: unknown[]; edges?: unknown[] } = { nodes: [], edges: [] };
+      try {
+        def = typeof workflow.definition === 'string'
           ? JSON.parse(workflow.definition)
-          : workflow.definition;
-      setNodes(def.nodes || []);
-      setEdges(def.edges || []);
+          : (workflow.definition as typeof def);
+      } catch {
+        // Invalid JSON definition, use empty
+      }
+      setNodes((def.nodes as Node[]) || []);
+      setEdges((def.edges as typeof edges) || []);
     }
   }, [workflow, setNodes, setEdges]);
 

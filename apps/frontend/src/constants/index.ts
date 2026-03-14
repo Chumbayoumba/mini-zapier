@@ -1,10 +1,3 @@
-export const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-green-500',
-  INACTIVE: 'bg-gray-400',
-  DRAFT: 'bg-yellow-500',
-  ERROR: 'bg-red-500',
-};
-
 export const EXECUTION_STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   COMPLETED: 'default',
   RUNNING: 'secondary',

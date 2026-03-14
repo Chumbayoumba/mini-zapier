@@ -43,7 +43,9 @@ export class EmailTriggerService implements OnModuleDestroy {
     if (this.imapConnection) {
       try {
         this.imapConnection.end();
-      } catch {}
+      } catch (error) {
+        this.logger.error('Failed to close IMAP connection', error instanceof Error ? error.message : String(error));
+      }
     }
   }
 

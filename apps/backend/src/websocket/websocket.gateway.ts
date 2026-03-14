@@ -10,6 +10,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { OnEvent } from '@nestjs/event-emitter';
 
 @WebSocketGateway({
@@ -25,12 +27,37 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
   private readonly logger = new Logger(WebsocketGateway.name);
 
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
+
   afterInit() {
     this.logger.log('WebSocket gateway initialized');
   }
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
+  async handleConnection(client: Socket) {
+    try {
+      const token =
+        client.handshake.auth?.token ||
+        client.handshake.headers?.authorization?.replace('Bearer ', '');
+
+      if (!token) {
+        this.logger.warn(`Client ${client.id} rejected: no token`);
+        client.disconnect();
+        return;
+      }
+
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      });
+
+      client.data.userId = payload.sub;
+      this.logger.log(`Client connected: ${client.id} (user: ${payload.sub})`);
+    } catch {
+      this.logger.warn(`Client ${client.id} rejected: invalid token`);
+      client.disconnect();
+    }
   }
 
   handleDisconnect(client: Socket) {
