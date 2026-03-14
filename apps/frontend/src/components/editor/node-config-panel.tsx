@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useEditorStore } from '@/stores/editor-store';
@@ -78,7 +78,8 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
     ] },
   ],
   TELEGRAM: [
-    { key: 'botToken', label: 'Bot Token', placeholder: '123456:ABC-DEF1234...', type: 'password', required: true, hint: 'Get from @BotFather on Telegram' },
+    { key: 'integrationId', label: 'Telegram Bot', placeholder: 'Select a bot...', inputType: 'select', required: true, options: [], hint: 'Select from your integrations or enter token manually below' },
+    { key: 'botToken', label: 'Bot Token (manual)', placeholder: '123456:ABC-DEF1234...', type: 'password', hint: 'Only if not using an integration above. Get from @BotFather' },
     { key: 'chatId', label: 'Chat ID', placeholder: '123456789', hint: 'Optional — auto-detected from Telegram trigger data' },
     { key: 'message', label: 'Message', placeholder: '🔔 Alert: {{trigger.data}}', inputType: 'textarea', rows: 4, required: true, hint: 'Max 4096 characters. Supports {{template}} variables' },
     { key: 'parseMode', label: 'Parse Mode', inputType: 'select', placeholder: '', options: [
@@ -149,7 +150,42 @@ export function NodeConfigPanel() {
         : f,
     );
   }
+
+  // Inject bot options into TELEGRAM action integrationId field
+  if (nodeType === 'TELEGRAM' && !isTrigger && fields) {
+    const telegramBots = integrations.filter((i) => i.type === 'TELEGRAM');
+    fields = fields.map((f) =>
+      f.key === 'integrationId'
+        ? {
+            ...f,
+            options: [
+              { value: '', label: 'Manual token entry' },
+              ...telegramBots.map((b) => ({ value: b.id, label: b.name })),
+            ],
+            hint: telegramBots.length === 0
+              ? 'No bots found. Add one on Integrations page or enter token below.'
+              : 'Select bot from integrations (token will be used automatically)',
+          }
+        : f,
+    );
+  }
   const config = (selectedNode.data?.config as Record<string, string>) || {};
+
+  // Auto-initialize select fields with first option when config is empty
+  const initRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fields || initRef.current === selectedNode.id) return;
+    initRef.current = selectedNode.id;
+    const updates: Record<string, string> = {};
+    for (const field of fields) {
+      if (field.inputType === 'select' && field.options && field.options.length > 0 && !config[field.key]) {
+        updates[field.key] = field.options[0].value;
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      updateNodeData(selectedNode.id, { config: { ...config, ...updates } });
+    }
+  }, [selectedNode.id, fields, config, updateNodeData]);
 
   const handleChange = (key: string, value: string) => {
     updateNodeData(selectedNode.id, {

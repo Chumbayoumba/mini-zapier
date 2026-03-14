@@ -153,11 +153,12 @@ function EditorCanvas() {
       setIsDragOver(false);
       const type = event.dataTransfer.getData('application/reactflow-type');
       const label = event.dataTransfer.getData('application/reactflow-label');
+      const category = event.dataTransfer.getData('application/reactflow-category');
 
       if (!type) return;
 
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-      const isTrigger = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(type);
+      const isTrigger = category === 'trigger';
 
       if (isTrigger) {
         const currentTriggers = countTriggerNodes(useEditorStore.getState().nodes);
@@ -205,6 +206,7 @@ function EditorCanvas() {
               onDragStart={(e) => {
                 e.dataTransfer.setData('application/reactflow-type', t.type);
                 e.dataTransfer.setData('application/reactflow-label', t.label);
+                e.dataTransfer.setData('application/reactflow-category', 'trigger');
                 e.dataTransfer.effectAllowed = 'move';
               }}
               className="mb-1.5 cursor-grab rounded-lg border p-2.5 text-sm font-medium hover:shadow-md transition-all active:cursor-grabbing flex items-center gap-2"
@@ -228,6 +230,7 @@ function EditorCanvas() {
               onDragStart={(e) => {
                 e.dataTransfer.setData('application/reactflow-type', a.type);
                 e.dataTransfer.setData('application/reactflow-label', a.label);
+                e.dataTransfer.setData('application/reactflow-category', 'action');
                 e.dataTransfer.effectAllowed = 'move';
               }}
               className="mb-1.5 cursor-grab rounded-lg border p-2.5 text-sm font-medium hover:shadow-md transition-all active:cursor-grabbing flex items-center gap-2"

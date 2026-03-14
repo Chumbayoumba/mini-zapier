@@ -264,6 +264,23 @@ export class EngineService {
       templateContext,
     );
 
+    // Resolve integrationId → real credentials for Telegram actions
+    if (node.data.type === 'TELEGRAM' && resolvedConfig.integrationId) {
+      try {
+        const integration = await this.prisma.integration.findUnique({
+          where: { id: resolvedConfig.integrationId },
+        });
+        if (integration?.config) {
+          const cfg = integration.config as any;
+          if (cfg.botToken && !resolvedConfig.botToken) {
+            resolvedConfig.botToken = cfg.botToken;
+          }
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to resolve integration ${resolvedConfig.integrationId}: ${e}`);
+      }
+    }
+
     // Create step log once (log resolved config for debugging)
     const stepLog = await this.prisma.executionStepLog.create({
       data: {
