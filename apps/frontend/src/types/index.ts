@@ -90,6 +90,7 @@ export interface ExecutionStepLog {
   input?: Record<string, any>;
   output?: Record<string, any>;
   error?: string;
+  errorStack?: string;
   retryCount: number;
   startedAt?: string;
   completedAt?: string;

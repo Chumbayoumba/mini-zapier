@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { EXECUTION_STATUS_VARIANTS } from '@/constants';
 import { formatDate, formatDuration } from '@/lib/utils';
 import { CheckCircle, XCircle, Clock, Loader2, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ExecutionStepLog } from '@/types';
 
 const statusIcons: Record<string, React.ReactNode> = {
   COMPLETED: <CheckCircle className="h-4 w-4 text-emerald-500" />,
@@ -94,8 +95,71 @@ export default function ExecutionDetailPage() {
         </Card>
       </div>
 
-      {/* Error */}
-      {execution.error && (
+      {/* Error — Enhanced structured error display */}
+      {execution.status === 'FAILED' && execution.error && (() => {
+        const failedStep = execution.stepLogs?.find(
+          (s: ExecutionStepLog) => s.status === 'FAILED'
+        );
+
+        return (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <XCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <h3 className="font-semibold text-red-800">Execution Failed</h3>
+            </div>
+
+            {/* Error message */}
+            <p className="text-red-700 text-sm">{execution.error}</p>
+
+            {/* Failed step context */}
+            {failedStep && (
+              <div className="space-y-2 mt-3">
+                <div className="text-sm">
+                  <span className="font-medium text-red-800">Failed Node:</span>{' '}
+                  <span className="text-red-700">{failedStep.nodeName} ({failedStep.nodeType})</span>
+                </div>
+
+                <div className="text-sm">
+                  <span className="font-medium text-red-800">Node ID:</span>{' '}
+                  <code className="text-red-600 bg-red-100 px-1 rounded">{failedStep.nodeId}</code>
+                </div>
+
+                {failedStep.retryCount != null && failedStep.retryCount > 0 && (
+                  <div className="text-sm">
+                    <span className="font-medium text-red-800">Retry Attempts:</span>{' '}
+                    <span className="text-red-700">{failedStep.retryCount}</span>
+                  </div>
+                )}
+
+                {/* Input that caused the failure */}
+                {failedStep.input && (
+                  <details className="mt-2">
+                    <summary className="text-sm font-medium text-red-800 cursor-pointer">
+                      Input Data
+                    </summary>
+                    <pre className="mt-1 text-xs bg-red-100 p-2 rounded overflow-auto max-h-48">
+                      {JSON.stringify(failedStep.input, null, 2)}
+                    </pre>
+                  </details>
+                )}
+
+                {/* Stack trace */}
+                {failedStep.errorStack && (
+                  <details className="mt-2">
+                    <summary className="text-sm font-medium text-red-800 cursor-pointer">
+                      Stack Trace
+                    </summary>
+                    <pre className="mt-1 text-xs bg-red-100 p-2 rounded overflow-auto max-h-48 whitespace-pre-wrap">
+                      {failedStep.errorStack}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+      {execution.error && execution.status !== 'FAILED' && (
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
@@ -122,26 +186,50 @@ export default function ExecutionDetailPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {execution.stepLogs.map((step: Record<string, unknown>, i: number) => (
-                <div key={step.id as string} className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/30">
+              {execution.stepLogs.map((step: ExecutionStepLog, i: number) => (
+                <div key={step.id} className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/30">
                   <div className="mt-0.5 shrink-0">
-                    {statusIcons[step.status as string] || statusIcons.PENDING}
+                    {statusIcons[step.status] || statusIcons.PENDING}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-sm truncate">Step {i + 1}: {step.nodeName as string}</p>
+                      <p className="font-medium text-sm truncate">Step {i + 1}: {step.nodeName}</p>
                       <div className="flex items-center gap-2 shrink-0">
                         {step.duration != null && (
-                          <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(step.duration as number)}</span>
+                          <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(step.duration)}</span>
                         )}
-                        <Badge variant="outline" className="text-[10px]">{step.nodeType as string}</Badge>
+                        <Badge variant="outline" className="text-[10px]">{step.nodeType}</Badge>
                       </div>
                     </div>
-                    {step.retryCount != null && (step.retryCount as number) > 0 && (
-                      <p className="text-xs text-amber-600 mt-1">Retried {step.retryCount as number} time(s)</p>
+                    {step.retryCount != null && step.retryCount > 0 && (
+                      <p className="text-xs text-amber-600 mt-1">Retried {step.retryCount} time(s)</p>
                     )}
                     {typeof step.error === 'string' && step.error && (
                       <p className="text-xs text-destructive mt-1 break-all">{step.error}</p>
+                    )}
+                    {step.input && (
+                      <details className="mt-1">
+                        <summary className="text-xs text-gray-500 cursor-pointer">Input</summary>
+                        <pre className="text-xs bg-gray-50 p-1 rounded mt-1 overflow-auto max-h-32">
+                          {JSON.stringify(step.input, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                    {step.output && (
+                      <details className="mt-1">
+                        <summary className="text-xs text-gray-500 cursor-pointer">Output</summary>
+                        <pre className="text-xs bg-gray-50 p-1 rounded mt-1 overflow-auto max-h-32">
+                          {JSON.stringify(step.output, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                    {step.errorStack && (
+                      <details className="mt-1">
+                        <summary className="text-xs text-red-500 cursor-pointer">Stack Trace</summary>
+                        <pre className="text-xs bg-red-50 p-1 rounded mt-1 overflow-auto max-h-32 whitespace-pre-wrap">
+                          {step.errorStack}
+                        </pre>
+                      </details>
                     )}
                   </div>
                 </div>
