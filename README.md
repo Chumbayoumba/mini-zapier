@@ -178,8 +178,8 @@
 
 ```bash
 # 1. Клонировать репозиторий
-git clone <repo-url>
-cd minizapierpraktika
+git clone https://github.com/Chumbayoumba/mini-zapier.git
+cd mini-zapier
 
 # 2. Скопировать переменные окружения
 cp .env.example apps/backend/.env
