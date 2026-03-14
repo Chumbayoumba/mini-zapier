@@ -40,28 +40,14 @@
 
 ## 🖼️ Скриншоты
 
-<details>
-<summary><b>📸 Нажмите, чтобы развернуть скриншоты</b></summary>
+### Dashboard — главная панель со статистикой
+![Dashboard](screenshots/dashboard.jpg)
 
-<br>
+### Workflow Editor — визуальный drag-and-drop редактор
+![Workflow Editor](screenshots/workflow_editor.jpg)
 
-> **Dashboard** — главная панель со статистикой
->
-> `screenshots/dashboard.png`
-
-> **Workflow Editor** — визуальный drag-and-drop редактор
->
-> `screenshots/editor.png`
-
-> **Execution Logs** — детальные логи выполнения
->
-> `screenshots/logs.png`
-
-> **Dark Mode** — тёмная тема
->
-> `screenshots/dark-mode.png`
-
-</details>
+### Схема готового Workflow
+![Workflow Scheme](screenshots/ready_scheme.jpg)
 
 ---
 
