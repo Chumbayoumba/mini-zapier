@@ -5,9 +5,9 @@
 ---
 
 ## Current Focus
-Phase: 04-actions-complete
+Phase: 05-dashboard-monitoring
 Current Plan: —
-Next action: `gsd:plan-phase 4` (Actions — Complete & Harden)
+Next action: `gsd:plan-phase 5` (Dashboard & Monitoring)
 
 ## Phase Status
 
@@ -16,7 +16,7 @@ Next action: `gsd:plan-phase 4` (Actions — Complete & Harden)
 | 1 | Security Hardening & Architecture Cleanup | ✅ Complete | 3/3 complete |
 | 2 | Engine Reliability & Error Handling | ✅ Complete | 3/3 complete |
 | 3 | Triggers — Fix & Complete | ✅ Complete | 3/3 complete |
-| 4 | Actions — Complete & Harden | ⬜ Not started | — |
+| 4 | Actions — Complete & Harden | ✅ Complete | 3/3 complete |
 | 5 | Dashboard & Monitoring | ⬜ Not started | — |
 | 6 | Editor UX Polish | ⬜ Not started | — |
 | 7 | API Documentation & Quality | ⬜ Not started | — |
@@ -54,6 +54,11 @@ Next action: `gsd:plan-phase 4` (Actions — Complete & Harden)
 | Structured logging with object params | this.logger.log({ msg, correlationId }) → Pino outputs JSON with all fields | 2025-01-31 |
 | ExecutionFailureToast in global providers | Mounted globally so all authenticated users get failure toasts | 2025-01-31 |
 
+| TemplateEngine as static utility, no DI | Pure function, no module registration needed | 2025-01-31 |
+| Remove Telegram interpolateMessage | Shared TemplateEngine in EngineService replaces private method | 2025-01-31 |
+| Per-execution SMTP in email action | Step config → context.integrations → global env fallback chain | 2025-01-31 |
+| Select/Textarea components for frontend panels | Native HTML wrapped in shadcn styling, no new dependencies | 2025-01-31 |
+
 ## Gotchas & Warnings
 
 - **vm2 is deprecated** — don't use, switch to isolated-vm if sandbox needed
@@ -70,6 +75,6 @@ Next action: `gsd:plan-phase 4` (Actions — Complete & Harden)
 | — | — | — |
 
 ## Last Session
-- **Stopped at:** Phase 3 complete and verified
-- **Phase 3 complete:** All 3 plans (03-01, 03-02, 03-03) finished — 51 trigger tests, all architectural checks pass
-- **Test baseline:** 17 suites, 253 tests — ALL PASS
+- **Stopped at:** Phase 4 complete and verified
+- **Phase 4 complete:** All 3 plans (04-01, 04-02, 04-03) finished — TemplateEngine, action hardening, frontend panels
+- **Test baseline:** 21 suites, 347 tests — ALL PASS
