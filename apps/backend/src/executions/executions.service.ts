@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -28,20 +28,23 @@ export class ExecutionsService {
     return { executions, total, page, totalPages: Math.ceil(total / limit) };
   }
 
-  async findById(id: string) {
+  async findById(id: string, userId?: string) {
     const execution = await this.prisma.workflowExecution.findUnique({
       where: { id },
       include: {
-        workflow: { select: { id: true, name: true, definition: true } },
+        workflow: { select: { id: true, name: true, definition: true, userId: true } },
         stepLogs: { orderBy: { startedAt: 'asc' } },
       },
     });
     if (!execution) throw new NotFoundException('Execution not found');
+    if (userId && execution.workflow.userId !== userId) {
+      throw new ForbiddenException('Access denied');
+    }
     return execution;
   }
 
-  async cancel(id: string) {
-    const execution = await this.findById(id);
+  async cancel(id: string, userId?: string) {
+    const execution = await this.findById(id, userId);
     if (execution.status !== 'RUNNING' && execution.status !== 'PENDING') {
       throw new Error('Can only cancel running or pending executions');
     }
@@ -51,8 +54,8 @@ export class ExecutionsService {
     });
   }
 
-  async retry(id: string) {
-    const execution = await this.findById(id);
+  async retry(id: string, userId?: string) {
+    const execution = await this.findById(id, userId);
     if (execution.status !== 'FAILED' && execution.status !== 'CANCELLED') {
       throw new Error('Can only retry failed or cancelled executions');
     }

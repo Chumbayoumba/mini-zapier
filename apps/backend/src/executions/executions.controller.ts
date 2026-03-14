@@ -44,19 +44,19 @@ export class ExecutionsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get execution details' })
-  async findOne(@Param('id') id: string) {
-    return this.executionsService.findById(id);
+  async findOne(@CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.executionsService.findById(id, userId);
   }
 
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Cancel execution' })
-  async cancel(@Param('id') id: string) {
-    return this.executionsService.cancel(id);
+  async cancel(@CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.executionsService.cancel(id, userId);
   }
 
   @Post(':id/retry')
   @ApiOperation({ summary: 'Retry failed execution' })
-  async retry(@Param('id') id: string) {
-    return this.executionsService.retry(id);
+  async retry(@CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.executionsService.retry(id, userId);
   }
 }

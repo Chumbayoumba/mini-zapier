@@ -106,13 +106,8 @@ export class DatabaseAction {
   }
 
   private async executeRaw(config: DatabaseConfig) {
-    if (!config.query) throw new BadRequestException('Query is required for RAW operation');
-    const forbidden = ['DROP', 'TRUNCATE', 'ALTER', 'CREATE'];
-    const upper = config.query.toUpperCase().trim();
-    if (forbidden.some((kw) => upper.startsWith(kw))) {
-      throw new BadRequestException(`Forbidden operation in query: ${upper.split(' ')[0]}`);
-    }
-    const result = await this.prisma.$queryRawUnsafe(config.query, ...(config.params || []));
-    return { rows: result, rowCount: Array.isArray(result) ? result.length : 0 };
+    throw new BadRequestException(
+      'Raw SQL queries are disabled for security. Use SELECT, INSERT, UPDATE, or DELETE operations instead.',
+    );
   }
 }

@@ -14,7 +14,10 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 @WebSocketGateway({
   namespace: '/executions',
-  cors: { origin: '*' },
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+  },
 })
 export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()

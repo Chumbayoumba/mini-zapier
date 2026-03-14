@@ -22,7 +22,7 @@ describe('ExecutionsService', () => {
 
   const mockExecutionWithLogs = {
     ...mockExecution,
-    workflow: { id: 'wf-1', name: 'Test Workflow', definition: { nodes: [], edges: [] } },
+    workflow: { id: 'wf-1', name: 'Test Workflow', definition: { nodes: [], edges: [] }, userId: 'user-1' },
     stepLogs: [
       { id: 'log-1', stepName: 'Step 1', status: 'COMPLETED', startedAt: new Date() },
       { id: 'log-2', stepName: 'Step 2', status: 'COMPLETED', startedAt: new Date() },
@@ -158,7 +158,7 @@ describe('ExecutionsService', () => {
       expect(prisma.workflowExecution.findUnique).toHaveBeenCalledWith({
         where: { id: 'exec-1' },
         include: {
-          workflow: { select: { id: true, name: true, definition: true } },
+          workflow: { select: { id: true, name: true, definition: true, userId: true } },
           stepLogs: { orderBy: { startedAt: 'asc' } },
         },
       });

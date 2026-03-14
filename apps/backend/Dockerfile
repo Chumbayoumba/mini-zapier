@@ -15,12 +15,22 @@ COPY . .
 RUN cd apps/backend && npx prisma generate && pnpm run build
 
 FROM base AS runner
+
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 backend
+
 ENV NODE_ENV=production
+
 COPY --from=builder /app/apps/backend/dist ./dist
 COPY --from=builder /app/apps/backend/node_modules ./node_modules
 COPY --from=builder /app/apps/backend/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
+USER backend
+
 EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
