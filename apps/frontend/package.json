@@ -40,6 +40,7 @@
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.0",
+    "zundo": "^2.3.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

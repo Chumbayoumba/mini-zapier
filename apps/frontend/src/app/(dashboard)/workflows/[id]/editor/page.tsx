@@ -15,14 +15,16 @@ import {
   type EdgeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useStore } from 'zustand';
 import { useEditorStore } from '@/stores/editor-store';
 import { useWorkflow, useUpdateWorkflow } from '@/hooks/use-workflows';
+import { useEditorKeyboardShortcuts } from '@/hooks/use-editor-keyboard-shortcuts';
 import { NodeConfigPanel } from '@/components/editor/node-config-panel';
 import TriggerNode from '@/components/editor/nodes/trigger-node';
 import ActionNode from '@/components/editor/nodes/action-node';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
 import { Button } from '@/components/ui/button';
-import { Save, Play, ArrowLeft, Maximize, Loader2 } from 'lucide-react';
+import { Save, Play, ArrowLeft, Maximize, Loader2, Undo2, Redo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 
@@ -49,6 +51,9 @@ function EditorCanvas() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
 
+  const canUndo = useStore(useEditorStore.temporal, (s) => s.pastStates.length > 0);
+  const canRedo = useStore(useEditorStore.temporal, (s) => s.futureStates.length > 0);
+
   const {
     nodes,
     edges,
@@ -69,6 +74,21 @@ function EditorCanvas() {
 
   const edgeTypes: EdgeTypes = useMemo(() => ({ animated: AnimatedEdge }), []);
 
+  const handleSave = useCallback(async () => {
+    try {
+      await updateWorkflow.mutateAsync({
+        id: workflowId,
+        definition: { nodes, edges },
+      });
+      useEditorStore.getState().markClean();
+      toast.success('Workflow saved');
+    } catch {
+      toast.error('Failed to save');
+    }
+  }, [workflowId, nodes, edges, updateWorkflow]);
+
+  useEditorKeyboardShortcuts({ onSave: handleSave });
+
   useEffect(() => {
     if (workflow?.definition) {
       let def: { nodes?: unknown[]; edges?: unknown[] } = { nodes: [], edges: [] };
@@ -81,20 +101,10 @@ function EditorCanvas() {
       }
       setNodes((def.nodes as Node[]) || []);
       setEdges((def.edges as typeof edges) || []);
+      useEditorStore.temporal.getState().clear();
+      useEditorStore.getState().markClean();
     }
   }, [workflow, setNodes, setEdges]);
-
-  const handleSave = async () => {
-    try {
-      await updateWorkflow.mutateAsync({
-        id: workflowId,
-        definition: { nodes, edges },
-      });
-      toast.success('Workflow saved');
-    } catch {
-      toast.error('Failed to save');
-    }
-  };
 
   const handleRun = async () => {
     try {
@@ -198,6 +208,13 @@ function EditorCanvas() {
             <span className="hidden sm:inline text-xs">Back</span>
           </Button>
           <div className="w-px h-5 bg-border" />
+          <Button size="sm" variant="ghost" onClick={() => useEditorStore.temporal.getState().undo()} disabled={!canUndo} title="Undo (Ctrl+Z)">
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => useEditorStore.temporal.getState().redo()} disabled={!canRedo} title="Redo (Ctrl+Y)">
+            <Redo2 className="h-3.5 w-3.5" />
+          </Button>
+          <div className="w-px h-5 bg-border" />
           <h2 className="font-semibold text-sm flex-1 truncate px-1">
             {workflow?.name || 'Workflow Editor'}
           </h2>
@@ -228,6 +245,7 @@ function EditorCanvas() {
             onPaneClick={() => setSelectedNode(null)}
             onDrop={onDrop}
             onDragOver={onDragOver}
+            selectionOnDrag
             fitView
             defaultEdgeOptions={{ type: 'animated', animated: true }}
             proOptions={{ hideAttribution: true }}
