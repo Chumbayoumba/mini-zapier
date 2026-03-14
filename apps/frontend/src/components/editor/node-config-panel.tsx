@@ -3,10 +3,26 @@
 import { useState } from 'react';
 import { useEditorStore } from '@/stores/editor-store';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { X, Settings2, Copy, Check } from 'lucide-react';
 
-const TRIGGER_FIELDS: Record<string, Array<{ key: string; label: string; placeholder: string; type?: string; required?: boolean }>> = {
+interface ConfigField {
+  key: string;
+  label: string;
+  placeholder: string;
+  type?: 'text' | 'password' | 'number';
+  inputType?: 'input' | 'textarea' | 'select' | 'code';
+  options?: Array<{ value: string; label: string }>;
+  required?: boolean;
+  hint?: string;
+  readOnly?: boolean;
+  rows?: number;
+}
+
+const TRIGGER_FIELDS: Record<string, Array<ConfigField>> = {
   WEBHOOK: [
     { key: 'secret', label: 'Secret (optional)', placeholder: 'HMAC secret for signature validation' },
   ],
@@ -23,30 +39,58 @@ const TRIGGER_FIELDS: Record<string, Array<{ key: string; label: string; placeho
   ],
 };
 
-const ACTION_FIELDS: Record<string, Array<{ key: string; label: string; placeholder: string; type?: string; required?: boolean }>> = {
+const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
   HTTP_REQUEST: [
-    { key: 'url', label: 'URL', placeholder: 'https://api.example.com/data', required: true },
-    { key: 'method', label: 'Method', placeholder: 'GET' },
-    { key: 'headers', label: 'Headers (JSON)', placeholder: '{"Authorization": "Bearer ..."}' },
-    { key: 'body', label: 'Body (JSON)', placeholder: '{}' },
+    { key: 'url', label: 'URL', placeholder: 'https://api.example.com/data', required: true, hint: 'Supports {{template}} variables' },
+    { key: 'method', label: 'Method', placeholder: 'GET', inputType: 'select', options: [
+      { value: 'GET', label: 'GET' },
+      { value: 'POST', label: 'POST' },
+      { value: 'PUT', label: 'PUT' },
+      { value: 'DELETE', label: 'DELETE' },
+      { value: 'PATCH', label: 'PATCH' },
+    ] },
+    { key: 'headers', label: 'Headers', placeholder: '{"Authorization": "Bearer ..."}', inputType: 'textarea', rows: 3, hint: 'JSON object with header key-value pairs' },
+    { key: 'body', label: 'Body', placeholder: '{"key": "value"}', inputType: 'textarea', rows: 4, hint: 'JSON request body' },
+    { key: 'timeout', label: 'Timeout (ms)', placeholder: '30000', type: 'number', hint: 'Request timeout in milliseconds' },
   ],
   SEND_EMAIL: [
-    { key: 'to', label: 'To', placeholder: 'user@example.com', required: true },
-    { key: 'subject', label: 'Subject', placeholder: 'Notification' },
-    { key: 'body', label: 'Body', placeholder: 'Hello {{name}}' },
+    { key: 'to', label: 'To', placeholder: 'user@example.com', required: true, hint: 'Comma-separated for multiple recipients' },
+    { key: 'cc', label: 'CC', placeholder: 'cc@example.com', hint: 'Comma-separated' },
+    { key: 'bcc', label: 'BCC', placeholder: 'bcc@example.com', hint: 'Comma-separated' },
+    { key: 'subject', label: 'Subject', placeholder: 'Notification: {{trigger.event}}', required: true, hint: 'Supports {{template}} variables' },
+    { key: 'body', label: 'Body', placeholder: 'Hello {{trigger.name}},\n\nYour order has been processed.', inputType: 'textarea', rows: 5, hint: 'Supports {{template}} variables' },
+    { key: 'isHtml', label: 'Format', inputType: 'select', placeholder: '', options: [
+      { value: 'false', label: 'Plain Text' },
+      { value: 'true', label: 'HTML' },
+    ] },
   ],
   TELEGRAM: [
-    { key: 'chatId', label: 'Chat ID', placeholder: '123456789', required: true },
-    { key: 'message', label: 'Message', placeholder: 'Alert: {{data}}' },
+    { key: 'botToken', label: 'Bot Token', placeholder: '123456:ABC-DEF1234...', type: 'password', required: true, hint: 'Get from @BotFather on Telegram' },
+    { key: 'chatId', label: 'Chat ID', placeholder: '123456789', required: true, hint: 'Numeric chat or group ID' },
+    { key: 'message', label: 'Message', placeholder: '🔔 Alert: {{trigger.data}}', inputType: 'textarea', rows: 4, required: true, hint: 'Max 4096 characters. Supports {{template}} variables' },
+    { key: 'parseMode', label: 'Parse Mode', inputType: 'select', placeholder: '', options: [
+      { value: 'HTML', label: 'HTML' },
+      { value: 'Markdown', label: 'Markdown' },
+      { value: 'MarkdownV2', label: 'MarkdownV2' },
+    ] },
   ],
   DATABASE: [
-    { key: 'operation', label: 'Operation', placeholder: 'SELECT' },
-    { key: 'table', label: 'Table', placeholder: 'users' },
-    { key: 'query', label: 'Query (for RAW)', placeholder: 'SELECT * FROM ...' },
+    { key: 'operation', label: 'Operation', placeholder: 'SELECT', inputType: 'select', readOnly: true, options: [
+      { value: 'SELECT', label: 'SELECT' },
+    ] },
+    { key: 'table', label: 'Table', placeholder: 'Select table', inputType: 'select', options: [
+      { value: 'workflows', label: 'workflows' },
+      { value: 'workflow_versions', label: 'workflow_versions' },
+      { value: 'triggers', label: 'triggers' },
+      { value: 'workflow_executions', label: 'workflow_executions' },
+      { value: 'execution_step_logs', label: 'execution_step_logs' },
+    ] },
+    { key: 'where', label: 'Where', placeholder: '{"status": "active"}', inputType: 'textarea', rows: 2, hint: 'JSON filter conditions' },
+    { key: 'orderBy', label: 'Order By', placeholder: 'created_at DESC' },
+    { key: 'limit', label: 'Limit', placeholder: '100', type: 'number' },
   ],
   TRANSFORM: [
-    { key: 'expression', label: 'JSONata Expression', placeholder: '$.data.items[price > 100]' },
-    { key: 'outputVariable', label: 'Output Variable', placeholder: 'filteredItems' },
+    { key: 'expression', label: 'JSONata Expression', placeholder: '$.data.items[price > 100]', inputType: 'code', rows: 5, required: true, hint: 'JSONata expression — see docs.jsonata.org' },
   ],
 };
 
@@ -135,21 +179,60 @@ export function NodeConfigPanel() {
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Configuration</p>
             <div className="space-y-3">
-              {fields.map((field) => (
-                <div key={field.key}>
-                  <label className="text-xs font-medium">
-                    {field.label}
-                    {field.required && <span className="text-destructive ml-0.5">*</span>}
-                  </label>
-                  <Input
-                    className={`mt-1 h-8 text-sm ${field.required && !config[field.key] ? 'border-destructive/50' : ''}`}
-                    type={field.type || 'text'}
-                    placeholder={field.placeholder}
-                    value={config[field.key] || ''}
-                    onChange={(e) => handleChange(field.key, e.target.value)}
-                  />
-                </div>
-              ))}
+              {fields.map((field) => {
+                const value = config[field.key] || '';
+                const hasError = field.required && !value;
+                const isNumberErr = field.type === 'number' && value !== '' && isNaN(Number(value));
+
+                return (
+                  <div key={field.key}>
+                    <label className="text-xs font-medium">
+                      {field.label}
+                      {field.required && <span className="text-destructive ml-0.5">*</span>}
+                    </label>
+
+                    {field.inputType === 'select' && field.options ? (
+                      <Select
+                        className={cn('mt-1 h-8 text-sm', hasError && 'border-destructive/50')}
+                        value={value || field.options[0]?.value || ''}
+                        options={field.options}
+                        disabled={field.readOnly}
+                        onChange={(e) => handleChange(field.key, e.target.value)}
+                      />
+                    ) : field.inputType === 'textarea' || field.inputType === 'code' ? (
+                      <Textarea
+                        className={cn(
+                          'mt-1 text-sm',
+                          field.inputType === 'code' && 'font-mono text-xs',
+                          hasError && 'border-destructive/50',
+                        )}
+                        rows={field.rows || 3}
+                        placeholder={field.placeholder}
+                        value={value}
+                        onChange={(e) => handleChange(field.key, e.target.value)}
+                      />
+                    ) : (
+                      <Input
+                        className={cn('mt-1 h-8 text-sm', (hasError || isNumberErr) && 'border-destructive/50')}
+                        type={field.type || 'text'}
+                        placeholder={field.placeholder}
+                        value={value}
+                        onChange={(e) => handleChange(field.key, e.target.value)}
+                      />
+                    )}
+
+                    {field.hint && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{field.hint}</p>
+                    )}
+                    {hasError && (
+                      <p className="text-[10px] text-destructive mt-0.5">{field.label} is required</p>
+                    )}
+                    {isNumberErr && (
+                      <p className="text-[10px] text-destructive mt-0.5">Must be a number</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Cron helper */}
@@ -168,6 +251,19 @@ export function NodeConfigPanel() {
                       <span className="text-muted-foreground">{ex.desc}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Template variables reference for action nodes */}
+            {!isTrigger && (
+              <div className="mt-2 rounded-md bg-muted/50 p-2">
+                <p className="text-[10px] font-medium text-muted-foreground mb-1">
+                  Template Variables
+                </p>
+                <div className="space-y-0.5 text-[10px] text-muted-foreground font-mono">
+                  <p>{'{{trigger.field}}'}</p>
+                  <p>{'{{steps.nodeId.output.field}}'}</p>
                 </div>
               </div>
             )}
