@@ -19,14 +19,21 @@
 | SEC-06 | WebSocket JWT auth on connection |
 | SEC-07 | Credential encryption AES-256-GCM |
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — ActionRegistry pattern + dead code removal (SEC-01)
+- [ ] 01-02-PLAN.md — SSRF protection, DB restriction, JWT hardening, Docker secrets (SEC-02, SEC-03, SEC-04, SEC-05)
+- [ ] 01-03-PLAN.md — WebSocket room authorization + credential encryption (SEC-06, SEC-07)
+
 **Success Criteria:**
 - [ ] `sandboxed.processor.ts` removed, all actions execute through EngineService
 - [ ] ActionRegistry with Map<string, ActionHandler> replaces switch-case
-- [ ] HTTP action rejects internal IPs (127.0.0.1, 10.x, 169.254.x, ::1)
-- [ ] DB action uses `workflow_data` schema with restricted PG role
+- [ ] HTTP action rejects internal IPs (127.0.0.1, 10.x, 169.254.x, ::1, fc00::/7)
+- [ ] DB action restricts to SELECT-only on non-sensitive tables (`users` excluded)
 - [ ] No hardcoded secrets in any committed file
-- [ ] WebSocket rejects connections without valid JWT
-- [ ] Credentials encrypted in DB, decrypted only at execution time
+- [ ] WebSocket rejects connections without valid JWT, room-join verifies ownership
+- [ ] CredentialService with AES-256-GCM encrypt/decrypt available (wired into actions in Phase 4)
 
 ---
 
