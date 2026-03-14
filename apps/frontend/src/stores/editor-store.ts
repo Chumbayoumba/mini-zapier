@@ -104,13 +104,19 @@ export const useEditorStore = create<EditorState>()(
       addNode: (node) => set({ nodes: [...get().nodes, node], isDirty: true }),
       setSelectedNode: (node) => set({ selectedNode: node }),
 
-      updateNodeData: (nodeId, data) =>
+      updateNodeData: (nodeId, data) => {
+        const { selectedNode } = get();
         set({
           nodes: get().nodes.map((n) =>
             n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n,
           ),
+          selectedNode:
+            selectedNode?.id === nodeId
+              ? { ...selectedNode, data: { ...selectedNode.data, ...data } }
+              : selectedNode,
           isDirty: true,
-        }),
+        });
+      },
 
       reset: () => set({ nodes: [], edges: [], selectedNode: null, isDirty: false, isSaving: false, lastSavedAt: null, clipboard: null }),
 
