@@ -1,7 +1,8 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { EngineService } from '../../engine/engine.service';
+import { QueueService } from '../../queue/queue.service';
 import * as cron from 'node-cron';
+import * as cronParser from 'cron-parser';
 
 @Injectable()
 export class CronService implements OnModuleInit, OnModuleDestroy {
@@ -10,7 +11,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private prisma: PrismaService,
-    private engineService: EngineService,
+    private queueService: QueueService,
   ) {}
 
   async onModuleInit() {
@@ -37,6 +38,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
 
     for (const trigger of triggers) {
       this.scheduleCron(trigger.id, trigger.config as any, trigger.workflowId);
+      await this.recoverMissedJobs(trigger as any);
     }
 
     this.logger.log(`Loaded ${triggers.length} cron triggers`);
@@ -53,26 +55,18 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       this.tasks.get(triggerId)!.stop();
     }
 
-    const task = cron.schedule(cronExpression, async () => {
-      this.logger.log(`Cron trigger fired: ${triggerId}`);
-      try {
-        await this.engineService.executeWorkflow(workflowId, {
-          trigger: 'cron',
-          scheduledAt: new Date().toISOString(),
-          cronExpression,
-        });
+    const timezone = config.timezone || 'UTC';
 
-        await this.prisma.trigger.update({
-          where: { id: triggerId },
-          data: { lastTriggeredAt: new Date() },
-        });
-      } catch (error: any) {
-        this.logger.error(`Cron execution failed for ${triggerId}: ${error.message}`);
-      }
-    });
+    const task = cron.schedule(
+      cronExpression,
+      async () => {
+        await this.onCronFire(triggerId, workflowId, cronExpression);
+      },
+      { timezone },
+    );
 
     this.tasks.set(triggerId, task);
-    this.logger.log(`Scheduled cron ${triggerId}: ${cronExpression}`);
+    this.logger.log(`Scheduled cron ${triggerId}: ${cronExpression} (tz: ${timezone})`);
   }
 
   stopCron(triggerId: string) {
@@ -81,6 +75,59 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
       task.stop();
       this.tasks.delete(triggerId);
       this.logger.log(`Stopped cron ${triggerId}`);
+    }
+  }
+
+  async onCronFire(triggerId: string, workflowId: string, cronExpression: string) {
+    try {
+      await this.queueService.addExecution(workflowId, {
+        trigger: 'cron',
+        scheduledAt: new Date().toISOString(),
+        cronExpression,
+      });
+
+      await this.prisma.trigger.update({
+        where: { id: triggerId },
+        data: { lastTriggeredAt: new Date() },
+      });
+    } catch (error: any) {
+      this.logger.error(`Cron execution failed for ${triggerId}: ${error.message}`);
+    }
+  }
+
+  async recoverMissedJobs(trigger: {
+    id: string;
+    workflowId: string;
+    lastTriggeredAt: Date | null;
+    config: any;
+  }) {
+    try {
+      if (!trigger.lastTriggeredAt || !trigger.config?.cronExpression) {
+        return;
+      }
+
+      const interval = cronParser.parseExpression(trigger.config.cronExpression, {
+        currentDate: trigger.lastTriggeredAt,
+      });
+
+      const nextFire = interval.next().toDate();
+
+      if (nextFire < new Date()) {
+        await this.queueService.addExecution(trigger.workflowId, {
+          trigger: 'cron',
+          scheduledAt: nextFire.toISOString(),
+          recovered: true,
+        });
+
+        await this.prisma.trigger.update({
+          where: { id: trigger.id },
+          data: { lastTriggeredAt: new Date() },
+        });
+
+        this.logger.log(`Recovered missed cron job for trigger ${trigger.id}`);
+      }
+    } catch (error: any) {
+      this.logger.error(`Failed to recover missed jobs for trigger ${trigger.id}: ${error.message}`);
     }
   }
 }

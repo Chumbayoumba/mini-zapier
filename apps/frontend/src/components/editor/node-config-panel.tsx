@@ -1,40 +1,42 @@
 'use client';
 
+import { useState } from 'react';
 import { useEditorStore } from '@/stores/editor-store';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { X, Settings2 } from 'lucide-react';
+import { X, Settings2, Copy, Check } from 'lucide-react';
 
-const TRIGGER_FIELDS: Record<string, { key: string; label: string; placeholder: string }[]> = {
+const TRIGGER_FIELDS: Record<string, Array<{ key: string; label: string; placeholder: string; type?: string; required?: boolean }>> = {
   WEBHOOK: [
-    { key: 'path', label: 'Webhook Path', placeholder: '/my-webhook' },
-    { key: 'secret', label: 'Secret (optional)', placeholder: 'hmac-secret' },
+    { key: 'secret', label: 'Secret (optional)', placeholder: 'HMAC secret for signature validation' },
   ],
   CRON: [
-    { key: 'expression', label: 'Cron Expression', placeholder: '*/5 * * * *' },
+    { key: 'cronExpression', label: 'Cron Expression', placeholder: '*/5 * * * *', required: true },
     { key: 'timezone', label: 'Timezone', placeholder: 'UTC' },
   ],
   EMAIL: [
-    { key: 'imapHost', label: 'IMAP Host', placeholder: 'imap.gmail.com' },
+    { key: 'imapHost', label: 'IMAP Host', placeholder: 'imap.gmail.com', required: true },
     { key: 'imapPort', label: 'IMAP Port', placeholder: '993' },
-    { key: 'filter', label: 'Subject Filter', placeholder: 'Order*' },
+    { key: 'imapUser', label: 'IMAP Username', placeholder: 'user@gmail.com', required: true },
+    { key: 'imapPassword', label: 'IMAP Password', placeholder: '••••••••', type: 'password', required: true },
+    { key: 'filter', label: 'Subject Filter (optional)', placeholder: 'Order*' },
   ],
 };
 
-const ACTION_FIELDS: Record<string, { key: string; label: string; placeholder: string }[]> = {
+const ACTION_FIELDS: Record<string, Array<{ key: string; label: string; placeholder: string; type?: string; required?: boolean }>> = {
   HTTP_REQUEST: [
-    { key: 'url', label: 'URL', placeholder: 'https://api.example.com/data' },
+    { key: 'url', label: 'URL', placeholder: 'https://api.example.com/data', required: true },
     { key: 'method', label: 'Method', placeholder: 'GET' },
     { key: 'headers', label: 'Headers (JSON)', placeholder: '{"Authorization": "Bearer ..."}' },
     { key: 'body', label: 'Body (JSON)', placeholder: '{}' },
   ],
   SEND_EMAIL: [
-    { key: 'to', label: 'To', placeholder: 'user@example.com' },
+    { key: 'to', label: 'To', placeholder: 'user@example.com', required: true },
     { key: 'subject', label: 'Subject', placeholder: 'Notification' },
     { key: 'body', label: 'Body', placeholder: 'Hello {{name}}' },
   ],
   TELEGRAM: [
-    { key: 'chatId', label: 'Chat ID', placeholder: '123456789' },
+    { key: 'chatId', label: 'Chat ID', placeholder: '123456789', required: true },
     { key: 'message', label: 'Message', placeholder: 'Alert: {{data}}' },
   ],
   DATABASE: [
@@ -48,8 +50,16 @@ const ACTION_FIELDS: Record<string, { key: string; label: string; placeholder: s
   ],
 };
 
+const CRON_EXAMPLES = [
+  { expr: '* * * * *', desc: 'Every minute' },
+  { expr: '*/5 * * * *', desc: 'Every 5 minutes' },
+  { expr: '0 * * * *', desc: 'Every hour' },
+  { expr: '0 9 * * 1-5', desc: 'Weekdays at 9:00' },
+];
+
 export function NodeConfigPanel() {
   const { selectedNode, updateNodeData, setSelectedNode } = useEditorStore();
+  const [copied, setCopied] = useState(false);
 
   if (!selectedNode) return null;
 
@@ -62,6 +72,17 @@ export function NodeConfigPanel() {
     updateNodeData(selectedNode.id, {
       config: { ...config, [key]: value },
     });
+  };
+
+  const webhookUrl = nodeType === 'WEBHOOK' && selectedNode.data?.triggerId
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/${selectedNode.data.triggerId}`
+    : null;
+
+  const handleCopyWebhook = async () => {
+    if (!webhookUrl) return;
+    await navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -92,6 +113,23 @@ export function NodeConfigPanel() {
           />
         </div>
 
+        {/* Webhook URL display */}
+        {nodeType === 'WEBHOOK' && webhookUrl && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Webhook URL</p>
+            <div className="flex gap-1">
+              <Input
+                className="h-8 text-xs font-mono bg-muted"
+                value={webhookUrl}
+                readOnly
+              />
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={handleCopyWebhook}>
+                {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Configuration section */}
         {fields && fields.length > 0 && (
           <div>
@@ -99,9 +137,13 @@ export function NodeConfigPanel() {
             <div className="space-y-3">
               {fields.map((field) => (
                 <div key={field.key}>
-                  <label className="text-xs font-medium">{field.label}</label>
+                  <label className="text-xs font-medium">
+                    {field.label}
+                    {field.required && <span className="text-destructive ml-0.5">*</span>}
+                  </label>
                   <Input
-                    className="mt-1 h-8 text-sm"
+                    className={`mt-1 h-8 text-sm ${field.required && !config[field.key] ? 'border-destructive/50' : ''}`}
+                    type={field.type || 'text'}
                     placeholder={field.placeholder}
                     value={config[field.key] || ''}
                     onChange={(e) => handleChange(field.key, e.target.value)}
@@ -109,6 +151,26 @@ export function NodeConfigPanel() {
                 </div>
               ))}
             </div>
+
+            {/* Cron helper */}
+            {nodeType === 'CRON' && (
+              <div className="mt-3 rounded-md bg-muted p-2">
+                <p className="text-[10px] font-medium text-muted-foreground mb-1">Examples:</p>
+                <div className="space-y-0.5">
+                  {CRON_EXAMPLES.map((ex) => (
+                    <button
+                      key={ex.expr}
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded px-1 py-0.5 text-[11px] hover:bg-background transition-colors"
+                      onClick={() => handleChange('cronExpression', ex.expr)}
+                    >
+                      <code className="font-mono text-[10px] text-primary">{ex.expr}</code>
+                      <span className="text-muted-foreground">{ex.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

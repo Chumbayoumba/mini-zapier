@@ -1,101 +1,97 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import * as Imap from 'imap';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QueueService } from '../../queue/queue.service';
 
 @Injectable()
-export class EmailTriggerService implements OnModuleDestroy {
+export class EmailTriggerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EmailTriggerService.name);
-  private imapConnection: any = null;
   private pollInterval: NodeJS.Timeout | null = null;
-  private isConfigured = false;
 
   constructor(
-    private configService: ConfigService,
-    private eventEmitter: EventEmitter2,
     private prisma: PrismaService,
-  ) {
-    const host = this.configService.get('IMAP_HOST');
-    this.isConfigured = !!host;
-    if (this.isConfigured) {
-      this.startPolling();
-    } else {
-      this.logger.warn('IMAP not configured — email triggers disabled');
-    }
+    private queueService: QueueService,
+  ) {}
+
+  onModuleInit() {
+    this.startPolling();
   }
 
   onModuleDestroy() {
     this.stopPolling();
   }
 
-  private startPolling() {
-    const intervalMs = 60_000; // poll every 60 seconds
-    this.logger.log(`Starting email polling every ${intervalMs / 1000}s`);
+  startPolling(intervalMs = 60_000) {
     this.pollInterval = setInterval(() => this.checkEmails(), intervalMs);
+    this.logger.log(`Email trigger polling started (${intervalMs / 1000}s interval)`);
   }
 
-  private stopPolling() {
+  stopPolling() {
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
     }
-    if (this.imapConnection) {
-      try {
-        this.imapConnection.end();
-      } catch (error) {
-        this.logger.error('Failed to close IMAP connection', error instanceof Error ? error.message : String(error));
-      }
-    }
   }
 
   async checkEmails(): Promise<void> {
-    if (!this.isConfigured) return;
+    const triggers = await this.prisma.trigger.findMany({
+      where: { type: 'EMAIL', isActive: true },
+      include: { workflow: true },
+    });
 
-    try {
-      const triggers = await this.prisma.trigger.findMany({
-        where: { type: 'EMAIL', isActive: true },
-        include: { workflow: true },
-      });
+    for (const trigger of triggers) {
+      if (trigger.workflow.status !== 'ACTIVE') continue;
 
-      if (triggers.length === 0) return;
+      const config = trigger.config as Record<string, any>;
+      if (!config.imapHost || !config.imapUser || !config.imapPassword) {
+        this.logger.warn(`Trigger ${trigger.id} missing IMAP config, skipping`);
+        continue;
+      }
 
-      const emails = await this.fetchNewEmails();
-
-      for (const trigger of triggers) {
-        const config = trigger.config as Record<string, any>;
+      try {
+        const emails = await this.fetchNewEmails(config);
         const filter = config.filter || config.subjectFilter;
-        const matching = filter
-          ? emails.filter((e) => e.subject?.includes(filter))
+        const filtered = filter
+          ? emails.filter((e) => e.subject?.toLowerCase().includes(filter.toLowerCase()))
           : emails;
 
-        for (const email of matching) {
-          this.eventEmitter.emit('trigger.fired', {
-            triggerId: trigger.id,
-            workflowId: trigger.workflowId,
-            data: { from: email.from, subject: email.subject, date: email.date, body: email.body },
+        for (const email of filtered) {
+          await this.queueService.addExecution(trigger.workflowId, {
+            from: email.from,
+            subject: email.subject,
+            date: email.date,
+            body: email.body,
+            trigger: 'email',
           });
         }
+
+        if (filtered.length > 0) {
+          await this.prisma.trigger.update({
+            where: { id: trigger.id },
+            data: { lastTriggeredAt: new Date() },
+          });
+        }
+      } catch (err: any) {
+        this.logger.error(`Email check failed for trigger ${trigger.id}: ${err.message}`);
       }
-    } catch (error: any) {
-      this.logger.error(`Email polling failed: ${error.message}`);
     }
   }
 
-  private async fetchNewEmails(): Promise<
-    { from: string; subject: string; date: string; body: string }[]
-  > {
+  async fetchNewEmails(
+    config: Record<string, any>,
+  ): Promise<Array<{ from: string; subject: string; date: string; body: string }>> {
+    const Imap = require('imap');
+
     return new Promise((resolve, reject) => {
       const imap = new Imap({
-        user: this.configService.get('IMAP_USER') || '',
-        password: this.configService.get('IMAP_PASSWORD') || '',
-        host: this.configService.get('IMAP_HOST') || '',
-        port: Number(this.configService.get('IMAP_PORT') || 993),
+        user: config.imapUser,
+        password: config.imapPassword,
+        host: config.imapHost,
+        port: Number(config.imapPort || 993),
         tls: true,
         tlsOptions: { rejectUnauthorized: false },
       });
 
-      const emails: { from: string; subject: string; date: string; body: string }[] = [];
+      const emails: Array<{ from: string; subject: string; date: string; body: string }> = [];
 
       imap.once('ready', () => {
         imap.openBox('INBOX', false, (err: any) => {
@@ -104,47 +100,52 @@ export class EmailTriggerService implements OnModuleDestroy {
             return reject(err);
           }
 
-          imap.search(['UNSEEN'], (err: any, uids: any) => {
-            if (err || !uids?.length) {
+          imap.search(['UNSEEN'], (err: any, uids: number[]) => {
+            if (err) {
+              imap.end();
+              return reject(err);
+            }
+            if (!uids || uids.length === 0) {
               imap.end();
               return resolve([]);
             }
 
-            const fetch = imap.fetch(uids.slice(0, 10), { bodies: '', markSeen: true });
+            const fetchUids = uids.slice(0, 10);
+            const f = imap.fetch(fetchUids, { bodies: '', markSeen: true });
 
-            fetch.on('message', (msg: any) => {
-              let header = '';
+            f.on('message', (msg: any) => {
+              let buffer = '';
               msg.on('body', (stream: any) => {
                 stream.on('data', (chunk: Buffer) => {
-                  header += chunk.toString('utf8');
+                  buffer += chunk.toString('utf8');
                 });
               });
               msg.once('end', () => {
-                const fromMatch = header.match(/^From: (.+)$/m);
-                const subjectMatch = header.match(/^Subject: (.+)$/m);
-                const dateMatch = header.match(/^Date: (.+)$/m);
+                const fromMatch = buffer.match(/^From:\s*(.+)$/mi);
+                const subjectMatch = buffer.match(/^Subject:\s*(.+)$/mi);
+                const dateMatch = buffer.match(/^Date:\s*(.+)$/mi);
                 emails.push({
-                  from: fromMatch?.[1] || '',
-                  subject: subjectMatch?.[1] || '',
-                  date: dateMatch?.[1] || '',
-                  body: header.substring(0, 500),
+                  from: fromMatch?.[1]?.trim() || '',
+                  subject: subjectMatch?.[1]?.trim() || '',
+                  date: dateMatch?.[1]?.trim() || new Date().toISOString(),
+                  body: buffer.substring(buffer.indexOf('\r\n\r\n') + 4).substring(0, 1000),
                 });
               });
             });
 
-            fetch.once('end', () => {
+            f.once('end', () => {
               imap.end();
               resolve(emails);
+            });
+            f.once('error', (err: any) => {
+              imap.end();
+              reject(err);
             });
           });
         });
       });
 
-      imap.once('error', (err: Error) => {
-        this.logger.error(`IMAP error: ${err.message}`);
-        resolve([]);
-      });
-
+      imap.once('error', (err: any) => reject(err));
       imap.connect();
     });
   }
