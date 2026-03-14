@@ -8,7 +8,7 @@
 
 ### Security (SEC)
 
-- [ ] **SEC-01**: System removes dual execution path — all workflow execution goes through single EngineService with validated action handlers
+- [x] **SEC-01**: System removes dual execution path — all workflow execution goes through single EngineService with validated action handlers
 - [ ] **SEC-02**: HTTP Request action blocks internal IPs, metadata endpoints, and DNS rebinding attacks (SSRF protection)
 - [ ] **SEC-03**: Database action uses restricted PostgreSQL role with separate schema, excludes sensitive tables (users), enforces row-level filtering by userId
 - [ ] **SEC-04**: JWT secrets are loaded exclusively from environment variables with no hardcoded fallbacks; startup fails if secrets are missing

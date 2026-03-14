@@ -1,18 +1,19 @@
 # STATE.md — Mini-Zapier Project Memory
 
-> Last updated: 2025-01-27
+> Last updated: 2025-01-30
 
 ---
 
 ## Current Focus
-Phase: Not started
-Next action: `gsd:plan-phase 1`
+Phase: 01-security-hardening
+Current Plan: 2 of 3
+Next action: `gsd:execute-phase 1` (01-02-PLAN.md)
 
 ## Phase Status
 
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
-| 1 | Security Hardening & Architecture Cleanup | ⬜ Not started | — |
+| 1 | Security Hardening & Architecture Cleanup | 🔵 In Progress | 1/3 complete |
 | 2 | Engine Reliability & Error Handling | ⬜ Not started | — |
 | 3 | Triggers — Fix & Complete | ⬜ Not started | — |
 | 4 | Actions — Complete & Harden | ⬜ Not started | — |
@@ -34,6 +35,7 @@ Next action: `gsd:plan-phase 1`
 | Vitest + RTL for frontend tests | Faster than Jest, better DX | 2025-01-27 |
 | Recharts for dashboard charts | Lightweight, React-native, good defaults | 2025-01-27 |
 | zundo for undo/redo | Zustand middleware, works with existing store | 2025-01-27 |
+| ActionRegistry uses Map + OnModuleInit | O(1) lookup, NestJS lifecycle-aware registration | 2025-01-30 |
 
 ## Gotchas & Warnings
 

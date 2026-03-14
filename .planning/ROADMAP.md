@@ -22,7 +22,7 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — ActionRegistry pattern + dead code removal (SEC-01)
+- [x] 01-01-PLAN.md — ActionRegistry pattern + dead code removal (SEC-01) ✅ 2025-01-30
 - [ ] 01-02-PLAN.md — SSRF protection, DB restriction, JWT hardening, Docker secrets (SEC-02, SEC-03, SEC-04, SEC-05)
 - [ ] 01-03-PLAN.md — WebSocket room authorization + credential encryption (SEC-06, SEC-07)
 
