@@ -13,6 +13,7 @@ import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OnEvent } from '@nestjs/event-emitter';
+import { PrismaService } from '../prisma/prisma.service';
 
 @WebSocketGateway({
   namespace: '/executions',
@@ -30,6 +31,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   afterInit() {
@@ -65,7 +67,17 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
   }
 
   @SubscribeMessage('join:execution')
-  handleJoinExecution(@ConnectedSocket() client: Socket, @MessageBody() executionId: string) {
+  async handleJoinExecution(@ConnectedSocket() client: Socket, @MessageBody() executionId: string) {
+    const execution = await this.prisma.workflowExecution.findFirst({
+      where: { id: executionId },
+      include: { workflow: { select: { userId: true } } },
+    });
+
+    if (!execution || execution.workflow.userId !== client.data.userId) {
+      client.emit('error', { message: 'Access denied' });
+      return;
+    }
+
     const room = `execution:${executionId}`;
     client.join(room);
     this.logger.debug(`Client ${client.id} joined ${room}`);
@@ -79,7 +91,16 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
   }
 
   @SubscribeMessage('join:workflow')
-  handleJoinWorkflow(@ConnectedSocket() client: Socket, @MessageBody() workflowId: string) {
+  async handleJoinWorkflow(@ConnectedSocket() client: Socket, @MessageBody() workflowId: string) {
+    const workflow = await this.prisma.workflow.findFirst({
+      where: { id: workflowId, userId: client.data.userId },
+    });
+
+    if (!workflow) {
+      client.emit('error', { message: 'Access denied' });
+      return;
+    }
+
     const room = `workflow:${workflowId}`;
     client.join(room);
     this.logger.debug(`Client ${client.id} joined ${room}`);
