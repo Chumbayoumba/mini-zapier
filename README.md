@@ -1,10 +1,10 @@
 <div align="center">
 
-# ⚡ Mini-Zapier
+# ⚡ FlowForge (Mini-Zapier)
 
 ### Платформа автоматизации рабочих процессов
 
-Визуальный конструктор workflow с drag-and-drop редактором, системой триггеров, очередью задач и мониторингом в реальном времени.
+Полнофункциональная платформа для создания и запуска автоматизаций через визуальный drag-and-drop редактор. Триггеры (Webhook, Cron, Email, Telegram), действия (HTTP, Email, Telegram, БД, Трансформации), очередь задач BullMQ, обработка ошибок с retry и мониторинг в реальном времени.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![NestJS](https://img.shields.io/badge/NestJS-10-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)
@@ -19,7 +19,8 @@
 [Функциональность](#-функциональность) •
 [Технологии](#-технологический-стек) •
 [API Docs](#-api-документация) •
-[Docker](#-docker)
+[Docker](#-docker) •
+[Демо](#-демо)
 
 </div>
 
@@ -27,14 +28,34 @@
 
 ## 📋 Описание проекта
 
-**Mini-Zapier** — полнофункциональная платформа для автоматизации рабочих процессов, вдохновлённая Zapier. Позволяет создавать, настраивать и запускать workflow через визуальный drag-and-drop редактор. Поддерживает различные типы триггеров и действий, обработку ошибок с retry, уведомления и мониторинг выполнения в реальном времени.
+**FlowForge** (Mini-Zapier) — полнофункциональная платформа для автоматизации рабочих процессов, вдохновлённая Zapier/n8n. Позволяет создавать, настраивать и запускать workflow через визуальный drag-and-drop редактор. Поддерживает 4 типа триггеров и 5 типов действий, интеграции с внешними сервисами (Telegram), обработку ошибок с retry, уведомления и мониторинг выполнения в реальном времени.
 
 ### Ключевые возможности:
-- 🎨 **Визуальный редактор** — создание workflow перетаскиванием узлов на canvas
-- ⚡ **Триггеры** — автоматический запуск по Webhook, расписанию (Cron) или входящему Email
+- 🎨 **Визуальный редактор** — создание workflow перетаскиванием узлов на canvas (React Flow)
+- ⚡ **4 типа триггеров** — Webhook, Cron, Email, Telegram
+- 🤖 **Telegram-боты** — полная интеграция: создайте бота, который отвечает на команды и сообщения
 - 🔄 **Очередь задач** — надёжное выполнение через BullMQ с Redis
 - 📊 **Dashboard** — статистика, графики и история выполнений
+- 🔌 **REST API** — полная Swagger-документация на каждый эндпоинт
 - 🌙 **Dark mode** — полная поддержка тёмной темы
+
+---
+
+## 🌐 Демо
+
+| Ресурс | URL |
+|:-------|:----|
+| 🖥️ **Приложение** | [https://zapier.egor-dev.ru](https://zapier.egor-dev.ru) |
+| 📖 **Swagger API Docs** | [https://zapier.egor-dev.ru/api/docs](https://zapier.egor-dev.ru/api/docs) |
+
+### Демо-аккаунты
+
+| Email | Пароль | Роль |
+|:------|:-------|:-----|
+| `admin@minizapier.com` | `admin123` | Admin |
+| `user@minizapier.com` | `user123` | User |
+
+> Вы также можете зарегистрировать собственный аккаунт через форму регистрации.
 
 ---
 
@@ -90,7 +111,9 @@
 | **Turborepo** | Monorepo-сборка и кэширование |
 | **pnpm** | Быстрый package manager |
 | **Docker** + **Docker Compose** | Контейнеризация |
-| **nginx** | Reverse proxy (production) |
+| **nginx** | Reverse proxy, security headers, gzip |
+| **PM2** | Process manager (production) |
+| **Certbot / Let's Encrypt** | SSL-сертификаты |
 
 ---
 
@@ -99,56 +122,72 @@
 ### 🎨 Визуальный редактор Workflow
 - Drag-and-drop canvas на базе React Flow
 - Добавление и соединение узлов (triggers → actions)
-- Настройка параметров каждого узла через side panel
-- Версионирование workflow
+- Настройка параметров каждого узла через side panel в реальном времени
+- Версионирование workflow (история изменений)
+- Активация / деактивация workflow одним кликом
 
-### 🔔 Триггеры (3 типа)
+### 🔔 Триггеры (4 типа)
 
 | Тип | Описание |
 |:----|:---------|
-| **Webhook** | HTTP-эндпоинт, запускающий workflow при получении запроса |
-| **Cron** (расписание) | Запуск по расписанию в формате cron-выражений |
-| **Email** (IMAP) | Мониторинг входящих писем и запуск при получении |
+| **Webhook** | HTTP-эндпоинт, запускающий workflow при получении POST-запроса |
+| **Cron** (расписание) | Запуск по расписанию в формате cron-выражений (с timezone) |
+| **Email** (IMAP) | Мониторинг входящих писем и запуск при получении нового письма |
+| **Telegram** | Реакция на сообщения Telegram-бота: команды (/start, /help), любые сообщения, callback query |
 
 ### ⚙️ Действия (5 типов)
 
 | Тип | Описание |
 |:----|:---------|
-| **HTTP Request** | Отправка HTTP-запросов к внешним API |
-| **Email** | Отправка email через SMTP |
-| **Telegram** | Отправка сообщений через Telegram Bot API |
-| **Database Query** | Выполнение SQL-запросов |
+| **HTTP Request** | Отправка HTTP-запросов к внешним API (GET, POST, PUT, DELETE, PATCH, HEAD) |
+| **Email** | Отправка email через SMTP (HTML/текст, CC/BCC) |
+| **Telegram** | Отправка сообщений через Telegram Bot API (HTML, Markdown, MarkdownV2) |
+| **Database Query** | Выполнение безопасных SQL-запросов (SELECT) с фильтрацией и пагинацией |
 | **Data Transform** | Трансформация данных с помощью JSONata-выражений |
+
+### 🤖 Telegram-интеграция (полный цикл)
+
+Платформа поддерживает полный цикл работы с Telegram-ботами:
+
+1. **Интеграции** — добавьте Telegram-бота через токен (с верификацией имени и аватарки)
+2. **Триггер** — выберите бота и тип события (команда /start, любое сообщение, callback query)
+3. **Действие** — отправьте ответ пользователю (Chat ID определяется автоматически из триггера)
+4. **Шаблоны** — используйте переменные `{{trigger.text}}`, `{{trigger.from.first_name}}`, `{{trigger.command}}` и др.
+
+> **Пример:** Бот отвечает на `/start` → триггер ловит команду → action отправляет "Привет, {{trigger.from.first_name}}!"
 
 ### 🔐 Аутентификация и безопасность
 - JWT access + refresh tokens с ротацией
 - Role-based access control (Admin / User)
 - Rate limiting (throttling)
 - Валидация входных данных (class-validator / Zod)
-- Security headers (Helmet, CORS)
+- Security headers (Helmet, CORS, X-Frame-Options, CSP)
+- Изоляция выполнения workflow между пользователями
 
 ### 📊 Dashboard и мониторинг
 - Статистика: общее количество workflow, запусков, процент успеха/ошибок
-- Графики на Recharts
-- Фильтруемая таблица истории выполнений
+- Графики выполнений по дням (Recharts)
+- Фильтруемая таблица истории выполнений (по статусу, дате, workflow)
 - Real-time обновления через WebSocket (Socket.io)
 
 ### 📋 Логирование выполнений
 - Пошаговые логи каждого выполнения (input → output)
-- Статус каждого шага: pending, running, completed, failed, skipped
+- Статус каждого шага: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `SKIPPED`
 - Время выполнения каждого шага
-- Детали ошибок с трейсами
+- Детали ошибок со stack trace
+- Timeline визуализация
 
 ### 🔄 Обработка ошибок
-- Retry с exponential backoff и jitter
+- Retry с exponential backoff и jitter (настраивается)
 - Уведомления об ошибках (Email + Telegram)
 - Пауза workflow при критических ошибках
-- Отмена выполнения
+- Отмена / повторный запуск выполнения
+- Повторный запуск с точки сбоя (retry from failed step)
 
 ### 🌙 Интерфейс
-- Dark mode / Light mode
+- Dark mode / Light mode (автоопределение + ручное переключение)
 - Адаптивный дизайн
-- REST API с полной Swagger-документацией
+- Лендинг-страница
 
 ---
 
@@ -194,13 +233,6 @@ pnpm dev
 | 🔌 **Backend API** | http://localhost:3001/api |
 | 📖 **Swagger Docs** | http://localhost:3001/api/docs |
 
-### Демо-аккаунты
-
-| Email | Пароль | Роль |
-|:------|:-------|:-----|
-| `admin@minizapier.com` | `admin123` | Admin |
-| `user@minizapier.com` | `user123` | User |
-
 ---
 
 ## 🐳 Docker
@@ -226,7 +258,7 @@ Production-стек включает:
 - **Redis 7** — очереди и кэш
 - **Backend** — NestJS API (внутренний порт 3001)
 - **Frontend** — Next.js SSR (внутренний порт 3000)
-- **nginx** — reverse proxy, маршрутизация (порт 80)
+- **nginx** — reverse proxy, gzip, security headers, WebSocket (порт 80)
 
 ---
 
@@ -234,70 +266,133 @@ Production-стек включает:
 
 Интерактивная документация (Swagger UI) доступна при запущенном backend:
 
-**🔗 http://localhost:3001/api/docs**
+**🔗 http://localhost:3001/api/docs** (локально) | **🔗 https://zapier.egor-dev.ru/api/docs** (демо)
 
-### Основные эндпоинты
+### Полный список эндпоинтов
+
+#### 🔐 Аутентификация
 
 | Метод | Эндпоинт | Описание |
 |:------|:---------|:---------|
-| `POST` | `/api/auth/register` | Регистрация пользователя |
-| `POST` | `/api/auth/login` | Вход в систему |
+| `POST` | `/api/auth/register` | Регистрация нового пользователя |
+| `POST` | `/api/auth/login` | Вход (возвращает access + refresh token) |
 | `POST` | `/api/auth/refresh` | Обновление access token |
-| `GET` | `/api/workflows` | Список workflow |
-| `POST` | `/api/workflows` | Создание workflow |
-| `PUT` | `/api/workflows/:id` | Обновление workflow |
-| `POST` | `/api/workflows/:id/execute` | Запуск workflow |
-| `GET` | `/api/executions` | История выполнений |
-| `GET` | `/api/executions/:id` | Детали выполнения |
-| `POST` | `/api/webhooks/:id` | Вызов Webhook-триггера |
+| `POST` | `/api/auth/logout` | Выход из системы |
+| `GET` | `/api/auth/me` | Профиль текущего пользователя |
+
+#### 📋 Workflows
+
+| Метод | Эндпоинт | Описание |
+|:------|:---------|:---------|
+| `POST` | `/api/workflows` | Создание нового workflow |
+| `GET` | `/api/workflows` | Список workflow (поиск, фильтр, пагинация) |
+| `GET` | `/api/workflows/:id` | Детали workflow |
+| `PATCH` | `/api/workflows/:id` | Обновление workflow |
+| `DELETE` | `/api/workflows/:id` | Удаление workflow |
+| `POST` | `/api/workflows/:id/activate` | Активация (регистрирует триггер) |
+| `POST` | `/api/workflows/:id/deactivate` | Деактивация (снимает триггер) |
+| `POST` | `/api/workflows/:id/execute` | Ручной запуск |
+| `GET` | `/api/workflows/:id/versions` | История версий |
+
+#### 📊 Выполнения (Executions)
+
+| Метод | Эндпоинт | Описание |
+|:------|:---------|:---------|
+| `GET` | `/api/executions` | Список выполнений (фильтр по статусу, дате, workflow) |
+| `GET` | `/api/executions/stats` | Статистика (всего, успешных, ошибок, %) |
+| `GET` | `/api/executions/recent` | Последние выполнения |
+| `GET` | `/api/executions/chart` | Данные для графика (по дням) |
+| `GET` | `/api/executions/:id` | Детали выполнения со step logs |
+| `POST` | `/api/executions/:id/cancel` | Отмена выполнения |
+| `POST` | `/api/executions/:id/pause` | Пауза |
+| `POST` | `/api/executions/:id/resume` | Возобновление |
+| `POST` | `/api/executions/:id/retry` | Повторный запуск |
+| `POST` | `/api/executions/:id/retry-from-failed` | Повтор с точки сбоя |
+
+#### 🔌 Интеграции
+
+| Метод | Эндпоинт | Описание |
+|:------|:---------|:---------|
+| `GET` | `/api/integrations` | Список интеграций пользователя |
+| `POST` | `/api/integrations` | Добавить интеграцию (Telegram-бот и др.) |
+| `DELETE` | `/api/integrations/:id` | Удалить интеграцию |
+| `POST` | `/api/integrations/telegram/verify` | Проверить токен Telegram-бота |
+
+#### 👤 Пользователи (Admin)
+
+| Метод | Эндпоинт | Описание |
+|:------|:---------|:---------|
+| `GET` | `/api/users` | Список всех пользователей |
+| `GET` | `/api/users/:id` | Детали пользователя |
+| `PATCH` | `/api/users/:id` | Обновление пользователя |
+| `DELETE` | `/api/users/:id` | Удаление пользователя |
+
+#### 🔗 Webhooks (публичные)
+
+| Метод | Эндпоинт | Описание |
+|:------|:---------|:---------|
+| `POST` | `/api/webhooks/:token` | Входящий Webhook-триггер |
+| `POST` | `/api/webhooks/telegram/:secret` | Входящий Telegram webhook |
 | `GET` | `/api/health` | Health check |
+| `GET` | `/api/health/ready` | Readiness probe (БД + память) |
 
 ---
 
 ## 📁 Структура проекта
 
 ```
-minizapierpraktika/
+mini-zapier/
 ├── apps/
 │   ├── backend/                  # 🔌 NestJS API-сервер
 │   │   ├── src/
 │   │   │   ├── auth/             # Аутентификация (JWT, Passport)
-│   │   │   ├── workflows/        # CRUD workflow
-│   │   │   ├── executions/       # История выполнений
+│   │   │   ├── workflows/        # CRUD workflow + активация
+│   │   │   ├── executions/       # История и статистика выполнений
 │   │   │   ├── engine/           # Движок выполнения workflow
-│   │   │   ├── triggers/         # Webhook, Cron, Email триггеры
+│   │   │   │   └── actions/      # HTTP, Email, Telegram, DB, Transform
+│   │   │   ├── triggers/         # Триггеры
+│   │   │   │   ├── webhook/      # Webhook-триггер
+│   │   │   │   ├── cron/         # Cron-триггер (расписание)
+│   │   │   │   ├── email/        # Email-триггер (IMAP)
+│   │   │   │   └── telegram/     # Telegram-триггер (webhook от бота)
+│   │   │   ├── integrations/     # Управление интеграциями
 │   │   │   ├── queue/            # BullMQ очередь задач
-│   │   │   ├── websocket/        # Real-time WebSocket
+│   │   │   ├── websocket/        # Real-time WebSocket (Socket.io)
 │   │   │   ├── notifications/    # Email и Telegram уведомления
 │   │   │   ├── users/            # Управление пользователями
-│   │   │   ├── health/           # Health check эндпоинт
+│   │   │   ├── health/           # Health / readiness check
 │   │   │   ├── common/           # Guards, decorators, filters
 │   │   │   ├── config/           # Конфигурация приложения
 │   │   │   └── prisma/           # Prisma service
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma     # Схема базы данных
-│   │   │   └── seed.ts           # Тестовые данные
+│   │   │   └── seed.ts           # Seed-данные
 │   │   └── test/                 # E2E тесты
 │   │
 │   └── frontend/                 # 🖥️ Next.js Dashboard
 │       └── src/
-│           ├── app/              # Страницы (App Router)
-│           ├── components/       # UI-компоненты
+│           ├── app/
+│           │   ├── (auth)/       # Login, Register
+│           │   └── (dashboard)/  # Dashboard, Workflows, Executions,
+│           │                     # Integrations, Settings, Editor
+│           ├── components/       # UI-компоненты (shadcn/ui)
+│           │   └── editor/       # Компоненты редактора workflow
 │           ├── hooks/            # Custom React hooks
-│           ├── stores/           # Zustand stores
-│           ├── lib/              # Утилиты и API client
-│           ├── providers/        # Context providers
+│           ├── stores/           # Zustand stores (editor state)
+│           ├── lib/              # API client, утилиты
+│           ├── providers/        # Auth, Theme, Query providers
 │           └── types/            # TypeScript типы
 │
 ├── packages/
-│   ├── shared/                   # Общие типы и утилиты
-│   └── config/                   # Общие конфигурации
+│   ├── shared/                   # @minizapier/shared — общие типы, константы, утилиты
+│   └── config/                   # @minizapier/config — ESLint, TypeScript конфиги
 │
 ├── nginx/
-│   └── nginx.conf                # Конфигурация reverse proxy
+│   └── nginx.conf                # Reverse proxy, gzip, security headers
 │
+├── screenshots/                  # Скриншоты для README
 ├── docker-compose.yml            # Dev: PostgreSQL + Redis
-├── docker-compose.prod.yml       # Prod: полный стек
+├── docker-compose.prod.yml       # Prod: полный стек (5 сервисов)
 ├── turbo.json                    # Turborepo конфигурация
 ├── pnpm-workspace.yaml           # pnpm workspace
 └── package.json                  # Root scripts
@@ -334,7 +429,7 @@ minizapierpraktika/
 | `IMAP_USER` | Email для мониторинга | — |
 | `IMAP_PASSWORD` | Пароль / app password | — |
 | **Telegram** | | |
-| `TELEGRAM_BOT_TOKEN` | Токен Telegram-бота | — |
+| `TELEGRAM_BOT_TOKEN` | Токен Telegram-бота (для уведомлений) | — |
 | **Frontend** | | |
 | `NEXT_PUBLIC_API_URL` | URL backend API | `http://localhost:3001/api` |
 | `NEXT_PUBLIC_WS_URL` | URL WebSocket-сервера | `http://localhost:3001` |
@@ -342,6 +437,8 @@ minizapierpraktika/
 ---
 
 ## 🧪 Тестирование
+
+Проект содержит **22 тестовых файла**, покрывающих все основные модули:
 
 ```bash
 # Unit-тесты (все пакеты)
@@ -360,11 +457,31 @@ pnpm lint
 pnpm format
 ```
 
+### Покрытие тестами
+
+| Модуль | Что тестируется |
+|:-------|:----------------|
+| **Engine** | Движок выполнения, action registry, шаблонизатор, credentials |
+| **Actions** | HTTP Request, Email, Telegram, Database, Transform — каждый action |
+| **Triggers** | Webhook (service + controller), Cron, Email |
+| **Auth** | Controller + Service (JWT, регистрация, логин) |
+| **Workflows** | Service (CRUD, активация) |
+| **Executions** | Service (история, статистика) |
+| **Users** | Service (управление пользователями) |
+| **Notifications** | Service (email + telegram уведомления) |
+| **WebSocket** | Gateway (real-time обновления) |
+
 ---
 
 ## 📦 Полезные команды
 
 ```bash
+# Режим разработки (frontend + backend + shared)
+pnpm dev
+
+# Собрать весь проект
+pnpm build
+
 # Открыть Prisma Studio (визуальный редактор БД)
 pnpm db:studio
 
@@ -373,9 +490,6 @@ pnpm db:migrate
 
 # Заполнить БД тестовыми данными
 pnpm db:seed
-
-# Собрать проект
-pnpm build
 
 # Очистить все артефакты сборки
 pnpm clean
@@ -392,31 +506,51 @@ pnpm clean
 │ id           │     │ id               │     │ id                    │
 │ email        │     │ userId           │     │ workflowId            │
 │ name         │     │ name             │     │ status                │
-│ role         │     │ status           │     │ triggerData           │
+│ role (enum)  │     │ status (enum)    │     │ triggerData (JSON)    │
 │ passwordHash │     │ definition (JSON)│     │ startedAt / completedAt│
 │ refreshToken │     │ version          │     │ error                 │
-└──────────────┘     └──────┬───────────┘     └───────────┬───────────┘
-                            │                             │
-                     ┌──────▼───────────┐     ┌───────────▼───────────┐
-                     │    triggers      │     │  execution_step_logs  │
-                     │                  │     │                       │
-                     │ id               │     │ id                    │
-                     │ workflowId       │     │ executionId           │
-                     │ type (enum)      │     │ nodeId / nodeName     │
-                     │ config (JSON)    │     │ status                │
-                     │ isActive         │     │ input / output (JSON) │
-                     └──────────────────┘     │ retryCount            │
-                                              │ duration              │
-                     ┌──────────────────┐     └───────────────────────┘
-                     │ workflow_versions│
-                     │                  │
-                     │ id               │
-                     │ workflowId       │
-                     │ version          │
-                     │ definition (JSON)│
-                     │ changelog        │
-                     └──────────────────┘
+│              │     │ errorConfig(JSON)│     │                       │
+└──────┬───────┘     └──────┬───────────┘     └───────────┬───────────┘
+       │                    │                             │
+       │             ┌──────▼───────────┐     ┌───────────▼───────────┐
+       │             │    triggers      │     │  execution_step_logs  │
+       │             │                  │     │                       │
+       │             │ id               │     │ id                    │
+       │             │ workflowId       │     │ executionId           │
+       │             │ type (enum):     │     │ nodeId / nodeName     │
+       │             │  WEBHOOK | CRON  │     │ status (enum)         │
+       │             │  EMAIL|TELEGRAM  │     │ input / output (JSON) │
+       │             │ config (JSON)    │     │ retryCount            │
+       │             │ isActive         │     │ duration              │
+       │             └──────────────────┘     │ error                 │
+       │                                      └───────────────────────┘
+       │             ┌──────────────────┐
+       │             │ workflow_versions│
+       │             │                  │
+       │             │ id               │
+       │             │ workflowId       │
+       │             │ version          │
+       │             │ definition (JSON)│
+       │             │ changelog        │
+       │             └──────────────────┘
+       │
+       └────────▶┌──────────────────┐
+                 │  integrations    │
+                 │                  │
+                 │ id               │
+                 │ userId           │
+                 │ type (TELEGRAM…) │
+                 │ name             │
+                 │ config (JSON)    │
+                 └──────────────────┘
 ```
+
+**Enum-типы:**
+- `UserRole`: `ADMIN`, `USER`
+- `WorkflowStatus`: `DRAFT`, `ACTIVE`, `PAUSED`, `ARCHIVED`
+- `TriggerType`: `WEBHOOK`, `CRON`, `EMAIL`, `TELEGRAM`
+- `ExecutionStatus`: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `PAUSED`
+- `StepStatus`: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `SKIPPED`
 
 ---
 
@@ -428,6 +562,6 @@ pnpm clean
 
 <div align="center">
 
-**⚡ Mini-Zapier** — создано с 💙 для автоматизации
+**⚡ FlowForge** — платформа автоматизации рабочих процессов
 
 </div>
