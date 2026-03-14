@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { io, Socket } from 'socket.io-client';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
@@ -59,4 +60,30 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, []);
 
   return { socket: socketRef.current, connected, on, emit, joinExecution, leaveExecution };
+}
+
+export function useDashboardLive() {
+  const queryClient = useQueryClient();
+  const { on, connected } = useWebSocket();
+
+  useEffect(() => {
+    if (!connected) return;
+
+    const unsubs = [
+      on('execution:completed', () => {
+        queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['recent-executions'] });
+        queryClient.invalidateQueries({ queryKey: ['chart-data'] });
+      }),
+      on('execution:started', () => {
+        queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      }),
+      on('execution:failed', () => {
+        queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['recent-executions'] });
+      }),
+    ];
+
+    return () => unsubs.forEach(unsub => unsub?.());
+  }, [connected, on, queryClient]);
 }

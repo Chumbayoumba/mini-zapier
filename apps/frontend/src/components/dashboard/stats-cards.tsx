@@ -1,7 +1,7 @@
 'use client';
 
 import { Card } from '@/components/ui/card';
-import { Activity, CheckCircle2, XCircle, Clock, Workflow, Zap } from 'lucide-react';
+import { Activity, CheckCircle2, XCircle, Clock, Workflow, Zap, BarChart3 } from 'lucide-react';
 
 interface StatsCardsProps {
   stats?: {
@@ -11,6 +11,7 @@ interface StatsCardsProps {
     successRate: number;
     failedExecutions: number;
     avgDuration: number;
+    executions24h?: number;
   };
 }
 
@@ -58,10 +59,17 @@ export function StatsCards({ stats }: StatsCardsProps) {
       iconColor: 'text-amber-600 dark:text-amber-400',
       iconBg: 'bg-amber-100 dark:bg-amber-500/15',
     },
+    {
+      title: 'Last 24h',
+      value: stats?.executions24h ?? 0,
+      icon: BarChart3,
+      iconColor: 'text-indigo-600 dark:text-indigo-400',
+      iconBg: 'bg-indigo-100 dark:bg-indigo-500/15',
+    },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (

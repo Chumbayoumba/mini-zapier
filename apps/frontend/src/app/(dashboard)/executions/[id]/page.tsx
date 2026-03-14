@@ -1,15 +1,19 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { useExecution } from '@/hooks/use-executions';
+import { useWebSocket } from '@/hooks/use-websocket';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ExecutionTimeline } from '@/components/dashboard/execution-timeline';
 import { EXECUTION_STATUS_VARIANTS } from '@/constants';
 import { formatDate, formatDuration } from '@/lib/utils';
-import { CheckCircle, XCircle, Clock, Loader2, ArrowLeft, AlertTriangle } from 'lucide-react';
-import { ExecutionStepLog } from '@/types';
+import { CheckCircle, XCircle, Clock, Loader2, ArrowLeft, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import type { ExecutionStepLog } from '@/types';
 
 const statusIcons: Record<string, React.ReactNode> = {
   COMPLETED: <CheckCircle className="h-4 w-4 text-emerald-500" />,
@@ -21,7 +25,33 @@ const statusIcons: Record<string, React.ReactNode> = {
 
 export default function ExecutionDetailPage() {
   const params = useParams();
+  const queryClient = useQueryClient();
   const { data: execution, isLoading } = useExecution(params.id as string);
+  const { on, joinExecution, leaveExecution, connected } = useWebSocket();
+
+  // WebSocket: live updates for running executions
+  useEffect(() => {
+    if (!connected || !params.id) return;
+    const execId = params.id as string;
+    joinExecution(execId);
+
+    const unsubs = [
+      on('step:update', () => {
+        queryClient.invalidateQueries({ queryKey: ['execution', execId] });
+      }),
+      on('execution:completed', () => {
+        queryClient.invalidateQueries({ queryKey: ['execution', execId] });
+      }),
+      on('execution:failed', () => {
+        queryClient.invalidateQueries({ queryKey: ['execution', execId] });
+      }),
+    ];
+
+    return () => {
+      leaveExecution(execId);
+      unsubs.forEach((unsub) => unsub?.());
+    };
+  }, [connected, params.id, on, joinExecution, leaveExecution, queryClient]);
 
   if (isLoading) {
     return (
@@ -58,6 +88,15 @@ export default function ExecutionDetailPage() {
             <Badge variant={EXECUTION_STATUS_VARIANTS[execution.status] || 'secondary'}>
               {execution.status}
             </Badge>
+            {execution.status === 'RUNNING' && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                {connected ? (
+                  <><Wifi className="h-3 w-3 text-emerald-500" /> Live</>
+                ) : (
+                  <><WifiOff className="h-3 w-3 text-gray-400" /> Offline</>
+                )}
+              </span>
+            )}
           </div>
           {execution.workflow?.name && (
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -94,6 +133,9 @@ export default function ExecutionDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Execution Timeline — visual step progress */}
+      <ExecutionTimeline steps={execution.stepLogs} />
 
       {/* Error — Enhanced structured error display */}
       {execution.status === 'FAILED' && execution.error && (() => {

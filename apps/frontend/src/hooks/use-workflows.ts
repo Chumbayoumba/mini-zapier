@@ -4,11 +4,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 
-export function useWorkflows(page = 1) {
+export interface WorkflowFilters {
+  page?: number;
+  search?: string;
+  status?: string;
+}
+
+export function useWorkflows(pageOrFilters: number | WorkflowFilters = 1) {
+  const filters: WorkflowFilters = typeof pageOrFilters === 'number'
+    ? { page: pageOrFilters }
+    : pageOrFilters;
+
   return useQuery({
-    queryKey: ['workflows', page],
+    queryKey: ['workflows', filters],
     queryFn: async () => {
-      const res = await api.get(`/workflows?page=${page}`);
+      const params = new URLSearchParams();
+      if (filters.page) params.set('page', String(filters.page));
+      if (filters.search) params.set('search', filters.search);
+      if (filters.status) params.set('status', filters.status);
+      const res = await api.get(`/workflows?${params}`);
       return res.data.data || res.data;
     },
   });
