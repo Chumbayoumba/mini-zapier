@@ -6,15 +6,15 @@
 
 ## Current Focus
 Phase: 02-engine-reliability
-Current Plan: 2 of 3 (02-01, 02-02 complete)
-Next action: `gsd:execute-phase 2` (Execute Plan 02-03)
+Current Plan: 3 of 3 (02-01, 02-02, 02-03 complete)
+Next action: `gsd:execute-phase 3` (Start Phase 03 — Triggers)
 
 ## Phase Status
 
 | Phase | Name | Status | Plans |
 |-------|------|--------|-------|
 | 1 | Security Hardening & Architecture Cleanup | ✅ Complete | 3/3 complete |
-| 2 | Engine Reliability & Error Handling | 🔄 In Progress | 2/3 complete |
+| 2 | Engine Reliability & Error Handling | ✅ Complete | 3/3 complete |
 | 3 | Triggers — Fix & Complete | ⬜ Not started | — |
 | 4 | Actions — Complete & Harden | ⬜ Not started | — |
 | 5 | Dashboard & Monitoring | ⬜ Not started | — |
@@ -49,6 +49,10 @@ Next action: `gsd:execute-phase 2` (Execute Plan 02-03)
 | Single step log per node, updated on retry | retryCount tracks attempts, errorStack stores final trace | 2025-01-31 |
 | retryFromFailed bridges through PAUSED state | Cleans up failed logs, sets PAUSED, calls resumeWorkflow to reuse logic | 2025-01-31 |
 | retry() enqueues via BullMQ not direct DB | Fixes dangling execution bug — fresh execution via queue | 2025-01-31 |
+| Per-user WebSocket rooms via client.join | Auto-join user:{userId} on connection for targeted notifications | 2025-01-31 |
+| notification.send event bridges Service→Gateway | Decouples NotificationsService from WebSocket gateway via EventEmitter2 | 2025-01-31 |
+| Structured logging with object params | this.logger.log({ msg, correlationId }) → Pino outputs JSON with all fields | 2025-01-31 |
+| ExecutionFailureToast in global providers | Mounted globally so all authenticated users get failure toasts | 2025-01-31 |
 
 ## Gotchas & Warnings
 
@@ -66,4 +70,5 @@ Next action: `gsd:execute-phase 2` (Execute Plan 02-03)
 | — | — | — |
 
 ## Last Session
-- **Stopped at:** Completed 02-02-PLAN.md (Core Engine — Per-Step Retry, Pause/Resume, Manual Retry)
+- **Stopped at:** Completed 02-03-PLAN.md (Error Handling & Notifications — Per-User Alerts, Error Display, Logging Context)
+- **Phase 2 complete:** All 3 plans (02-01, 02-02, 02-03) finished

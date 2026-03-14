@@ -48,7 +48,7 @@
 ### Execution Engine (EXE)
 
 - [x] **EXE-01**: System executes workflow steps sequentially following DAG topological order through BullMQ job queue
-- [ ] **EXE-02**: Each execution step is logged with status (pending/running/completed/failed/skipped), input data, output data, duration, and error details
+- [x] **EXE-02**: Each execution step is logged with status (pending/running/completed/failed/skipped), input data, output data, duration, and error details
 - [ ] **EXE-03**: User can view real-time execution progress via WebSocket — nodes on canvas show live status (running spinner, green check, red X)
 - [x] **EXE-04**: System supports workflow pause — user can pause a running workflow, which suspends execution after current step completes
 - [x] **EXE-05**: User can resume a paused workflow from where it stopped
@@ -58,9 +58,9 @@
 
 ### Error Handling (ERR)
 
-- [ ] **ERR-01**: System sends notification (in-app toast + optional email) when a workflow execution fails after all retry attempts
+- [x] **ERR-01**: System sends notification (in-app toast + optional email) when a workflow execution fails after all retry attempts
 - [ ] **ERR-02**: User can configure per-workflow error behavior: retry count, notification preferences
-- [ ] **ERR-03**: Failed executions show clear error message with step context (which node failed, what input caused it, stack trace)
+- [x] **ERR-03**: Failed executions show clear error message with step context (which node failed, what input caused it, stack trace)
 - [ ] **ERR-04**: System logs all errors with structured format (Pino logger) including execution ID, step ID, action type, and timestamp
 
 ### Dashboard (DSH)
@@ -132,9 +132,9 @@
 | TRG-01..04 | Phase 3 | Pending |
 | ACT-01..07 | Phase 4 | Pending |
 | EDT-01..09 | Phase 6 | Pending |
-| EXE-01..02, EXE-04..08 | Phase 2 | In Progress |
+| EXE-01..02, EXE-04..08 | Phase 2 | ✅ Complete |
 | EXE-03 | Phase 5 | Pending |
-| ERR-01, ERR-03..04 | Phase 2 | In Progress |
+| ERR-01, ERR-03..04 | Phase 2 | ✅ Complete |
 | ERR-02 | Phase 8 | Pending |
 | DSH-01..06 | Phase 5 | Pending |
 | API-01..03 | Phase 7 | Pending |
