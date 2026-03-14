@@ -2,21 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EngineService } from './engine.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { HttpRequestAction } from './actions/http-request.action';
-import { EmailAction } from './actions/email.action';
-import { TelegramAction } from './actions/telegram.action';
-import { DatabaseAction } from './actions/database.action';
-import { TransformAction } from './actions/transform.action';
+import { ActionRegistry } from './action-registry';
 
 describe('EngineService', () => {
   let service: EngineService;
   let prisma: Record<string, any>;
   let eventEmitter: jest.Mocked<Pick<EventEmitter2, 'emit'>>;
-  let httpAction: jest.Mocked<Pick<HttpRequestAction, 'execute'>>;
-  let emailAction: jest.Mocked<Pick<EmailAction, 'execute'>>;
-  let telegramAction: jest.Mocked<Pick<TelegramAction, 'execute'>>;
-  let dbAction: jest.Mocked<Pick<DatabaseAction, 'execute'>>;
-  let transformAction: jest.Mocked<Pick<TransformAction, 'execute'>>;
+  let actionRegistry: { get: jest.Mock };
+  let mockHandlers: Record<string, { execute: jest.Mock }>;
 
   const mockExecution = {
     id: 'exec-1',
@@ -47,22 +40,29 @@ describe('EngineService', () => {
     };
 
     eventEmitter = { emit: jest.fn() };
-    httpAction = { execute: jest.fn() };
-    emailAction = { execute: jest.fn() };
-    telegramAction = { execute: jest.fn() };
-    dbAction = { execute: jest.fn() };
-    transformAction = { execute: jest.fn() };
+
+    mockHandlers = {
+      HTTP_REQUEST: { execute: jest.fn() },
+      SEND_EMAIL: { execute: jest.fn() },
+      TELEGRAM: { execute: jest.fn() },
+      DATABASE: { execute: jest.fn() },
+      TRANSFORM: { execute: jest.fn() },
+    };
+
+    actionRegistry = {
+      get: jest.fn((type: string) => {
+        const handler = mockHandlers[type];
+        if (!handler) throw new Error(`Unknown action type: ${type}`);
+        return handler;
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EngineService,
         { provide: PrismaService, useValue: prisma },
         { provide: EventEmitter2, useValue: eventEmitter },
-        { provide: HttpRequestAction, useValue: httpAction },
-        { provide: EmailAction, useValue: emailAction },
-        { provide: TelegramAction, useValue: telegramAction },
-        { provide: DatabaseAction, useValue: dbAction },
-        { provide: TransformAction, useValue: transformAction },
+        { provide: ActionRegistry, useValue: actionRegistry },
       ],
     }).compile();
 
@@ -117,7 +117,7 @@ describe('EngineService', () => {
       await service.executeWorkflow('wf-1', triggerData);
 
       // Trigger nodes don't call any action — they set stepResults directly
-      expect(httpAction.execute).not.toHaveBeenCalled();
+      expect(mockHandlers.HTTP_REQUEST.execute).not.toHaveBeenCalled();
     });
 
     it('should emit execution.started event', async () => {
@@ -188,11 +188,11 @@ describe('EngineService', () => {
       prisma.workflowExecution.update.mockResolvedValue({});
       prisma.executionStepLog.create.mockResolvedValue({ id: 'step-1' });
       prisma.executionStepLog.update.mockResolvedValue({});
-      httpAction.execute.mockResolvedValue({ status: 200, body: 'ok' });
+      mockHandlers.HTTP_REQUEST.execute.mockResolvedValue({ status: 200, body: 'ok' });
 
       await service.executeWorkflow('wf-1', { some: 'data' });
 
-      expect(httpAction.execute).toHaveBeenCalledWith(
+      expect(mockHandlers.HTTP_REQUEST.execute).toHaveBeenCalledWith(
         expect.objectContaining({ url: 'https://api.test' }),
       );
     });
@@ -210,11 +210,11 @@ describe('EngineService', () => {
       prisma.workflowExecution.update.mockResolvedValue({});
       prisma.executionStepLog.create.mockResolvedValue({ id: 'step-1' });
       prisma.executionStepLog.update.mockResolvedValue({});
-      transformAction.execute.mockResolvedValue({ result: 42 });
+      mockHandlers.TRANSFORM.execute.mockResolvedValue({ result: 42 });
 
       await service.executeWorkflow('wf-1');
 
-      expect(transformAction.execute).toHaveBeenCalled();
+      expect(mockHandlers.TRANSFORM.execute).toHaveBeenCalled();
     });
 
     it('should create step log for each action node', async () => {
@@ -230,7 +230,7 @@ describe('EngineService', () => {
       prisma.workflowExecution.update.mockResolvedValue({});
       prisma.executionStepLog.create.mockResolvedValue({ id: 'step-1' });
       prisma.executionStepLog.update.mockResolvedValue({});
-      httpAction.execute.mockResolvedValue({});
+      mockHandlers.HTTP_REQUEST.execute.mockResolvedValue({});
 
       await service.executeWorkflow('wf-1');
 
@@ -260,7 +260,7 @@ describe('EngineService', () => {
       prisma.workflowExecution.update.mockResolvedValue({});
       prisma.executionStepLog.create.mockResolvedValue({ id: 'step-1' });
       prisma.executionStepLog.update.mockResolvedValue({});
-      emailAction.execute.mockResolvedValue({ sent: true });
+      mockHandlers.SEND_EMAIL.execute.mockResolvedValue({ sent: true });
 
       await service.executeWorkflow('wf-1');
 
@@ -290,7 +290,7 @@ describe('EngineService', () => {
       prisma.workflowExecution.update.mockResolvedValue({});
       prisma.executionStepLog.create.mockResolvedValue({ id: 'step-1' });
       prisma.executionStepLog.update.mockResolvedValue({});
-      httpAction.execute.mockRejectedValue(new Error('Network error'));
+      mockHandlers.HTTP_REQUEST.execute.mockRejectedValue(new Error('Network error'));
 
       await expect(service.executeWorkflow('wf-1')).rejects.toThrow('Network error');
 
@@ -316,7 +316,7 @@ describe('EngineService', () => {
       prisma.workflowExecution.update.mockResolvedValue({});
       prisma.executionStepLog.create.mockResolvedValue({ id: 'step-1' });
       prisma.executionStepLog.update.mockResolvedValue({});
-      telegramAction.execute.mockRejectedValue(new Error('TG API down'));
+      mockHandlers.TELEGRAM.execute.mockRejectedValue(new Error('TG API down'));
 
       await expect(service.executeWorkflow('wf-1')).rejects.toThrow('TG API down');
 
@@ -363,11 +363,11 @@ describe('EngineService', () => {
       prisma.executionStepLog.create.mockResolvedValue({ id: 'step-log-1' });
       prisma.executionStepLog.update.mockResolvedValue({});
 
-      httpAction.execute.mockImplementation(async () => {
+      mockHandlers.HTTP_REQUEST.execute.mockImplementation(async () => {
         callOrder.push('HTTP_REQUEST');
         return { ok: true };
       });
-      transformAction.execute.mockImplementation(async () => {
+      mockHandlers.TRANSFORM.execute.mockImplementation(async () => {
         callOrder.push('TRANSFORM');
         return { transformed: true };
       });

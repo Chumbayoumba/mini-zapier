@@ -1,17 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { HttpRequestAction } from './actions/http-request.action';
-import { EmailAction } from './actions/email.action';
-import { TelegramAction } from './actions/telegram.action';
-import { DatabaseAction } from './actions/database.action';
-import { TransformAction } from './actions/transform.action';
+import { ActionRegistry } from './action-registry';
 
 export interface ExecutionContext {
   executionId: string;
   workflowId: string;
   triggerData: any;
   stepResults: Record<string, any>;
+  integrations?: any;
 }
 
 @Injectable()
@@ -21,11 +18,7 @@ export class EngineService {
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
-    private httpAction: HttpRequestAction,
-    private emailAction: EmailAction,
-    private telegramAction: TelegramAction,
-    private dbAction: DatabaseAction,
-    private transformAction: TransformAction,
+    private actionRegistry: ActionRegistry,
   ) {}
 
   async executeWorkflow(workflowId: string, triggerData?: any) {
@@ -41,24 +34,27 @@ export class EngineService {
       },
     });
 
+    const definition = workflow.definition as any;
+    const { nodes, edges, integrations } = definition;
+
     const context: ExecutionContext = {
       executionId: execution.id,
       workflowId,
       triggerData,
       stepResults: {},
+      integrations,
     };
 
     this.eventEmitter.emit('execution.started', { executionId: execution.id, workflowId });
 
     try {
-      const definition = workflow.definition as any;
-      const { nodes, edges } = definition;
-
       // Build execution order (topological sort based on edges)
       const executionOrder = this.getExecutionOrder(nodes, edges);
 
+      const TRIGGER_ONLY_TYPES = ['WEBHOOK', 'CRON', 'EMAIL'];
       for (const node of executionOrder) {
-        if (node.data.type === 'WEBHOOK' || node.data.type === 'CRON' || node.data.type === 'EMAIL') {
+        const isTriggerNode = node.type === 'triggerNode' || node.id?.startsWith('trigger-') || TRIGGER_ONLY_TYPES.includes(node.data.type);
+        if (isTriggerNode) {
           context.stepResults[node.id] = triggerData;
           continue;
         }
@@ -124,7 +120,7 @@ export class EngineService {
     });
 
     try {
-      const input = { ...node.data.config, _context: context.stepResults };
+      const input = { ...node.data.config, _context: { ...context.stepResults, triggerData: context.triggerData, integrations: context.integrations } };
       const result = await this.executeAction(node.data.type, input);
 
       context.stepResults[node.id] = result;
@@ -171,20 +167,8 @@ export class EngineService {
   }
 
   private async executeAction(type: string, input: any): Promise<any> {
-    switch (type) {
-      case 'HTTP_REQUEST':
-        return this.httpAction.execute(input);
-      case 'SEND_EMAIL':
-        return this.emailAction.execute(input);
-      case 'TELEGRAM':
-        return this.telegramAction.execute(input);
-      case 'DATABASE':
-        return this.dbAction.execute(input);
-      case 'TRANSFORM':
-        return this.transformAction.execute(input);
-      default:
-        throw new Error(`Unknown action type: ${type}`);
-    }
+    const handler = this.actionRegistry.get(type);
+    return handler.execute(input);
   }
 
   private getExecutionOrder(nodes: any[], edges: any[]): any[] {
