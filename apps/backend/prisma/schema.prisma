@@ -67,6 +67,7 @@ model Workflow {
   definition  Json            @default("{\"nodes\":[],\"edges\":[]}")
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+  errorConfig Json?           @default("{\"retry\":{\"maxAttempts\":3,\"baseDelayMs\":1000,\"maxDelayMs\":30000,\"jitter\":true},\"notifications\":{\"inApp\":true,\"email\":false}}")
 
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   trigger     Trigger?
@@ -111,15 +112,19 @@ model Trigger {
 }
 
 model WorkflowExecution {
-  id          String          @id @default(cuid())
-  workflowId  String
-  triggerData Json?
-  status      ExecutionStatus @default(PENDING)
-  startedAt   DateTime?
-  completedAt DateTime?
-  error       String?
-  duration    Int?
-  createdAt   DateTime        @default(now())
+  id                  String          @id @default(cuid())
+  workflowId          String
+  triggerData         Json?
+  status              ExecutionStatus @default(PENDING)
+  startedAt           DateTime?
+  completedAt         DateTime?
+  error               String?
+  duration            Int?
+  lastCompletedNodeId String?
+  pausedAt            DateTime?
+  resumedAt           DateTime?
+  correlationId       String?         @default(cuid())
+  createdAt           DateTime        @default(now())
 
   workflow    Workflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   stepLogs    ExecutionStepLog[]
@@ -140,6 +145,7 @@ model ExecutionStepLog {
   input         Json?
   output        Json?
   error         String?
+  errorStack    String?
   retryCount    Int        @default(0)
   startedAt     DateTime?
   completedAt   DateTime?

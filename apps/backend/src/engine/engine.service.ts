@@ -2,14 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActionRegistry } from './action-registry';
-
-export interface ExecutionContext {
-  executionId: string;
-  workflowId: string;
-  triggerData: any;
-  stepResults: Record<string, any>;
-  integrations?: any;
-}
+import { ExecutionContext } from './execution-context';
 
 @Injectable()
 export class EngineService {

@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
-import { Queue, Job } from 'bullmq';
-import { EngineService } from '../engine/engine.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class QueueService {
@@ -17,8 +16,7 @@ export class QueueService {
       { workflowId, triggerData },
       {
         delay,
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
+        attempts: 1,
         removeOnComplete: 100,
         removeOnFail: 200,
       },
@@ -38,29 +36,5 @@ export class QueueService {
     ]);
 
     return { waiting, active, completed, failed, delayed };
-  }
-}
-
-@Processor('workflow-execution')
-export class WorkflowProcessor extends WorkerHost {
-  private readonly logger = new Logger(WorkflowProcessor.name);
-
-  constructor(private engineService: EngineService) {
-    super();
-  }
-
-  async process(job: Job<{ workflowId: string; triggerData?: any }>) {
-    this.logger.log(`Processing job ${job.id} for workflow ${job.data.workflowId}`);
-
-    try {
-      const executionId = await this.engineService.executeWorkflow(
-        job.data.workflowId,
-        job.data.triggerData,
-      );
-      return { executionId };
-    } catch (error: any) {
-      this.logger.error(`Job ${job.id} failed: ${error.message}`);
-      throw error;
-    }
   }
 }
