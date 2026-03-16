@@ -58,6 +58,91 @@ export class IntegrationsService {
     return this.prisma.integration.findUnique({ where: { webhookSecret: secret } });
   }
 
+  async verifySMTP(config: { host: string; port: number; user: string; password: string; secure?: boolean }): Promise<{
+    ok: boolean;
+    message: string;
+  }> {
+    try {
+      const nodemailer = await import('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: config.host,
+        port: config.port,
+        secure: config.secure ?? config.port === 465,
+        auth: { user: config.user, pass: config.password },
+        connectionTimeout: 10000,
+      });
+      await transporter.verify();
+      return { ok: true, message: `SMTP connection to ${config.host}:${config.port} verified` };
+    } catch (error: any) {
+      this.logger.error('SMTP verify failed', error);
+      return { ok: false, message: error.message || 'SMTP connection failed' };
+    }
+  }
+
+  async verifyWebhook(config: { name: string; url?: string }): Promise<{
+    ok: boolean;
+    webhookUrl: string;
+    secret: string;
+  }> {
+    const secret = randomBytes(32).toString('hex');
+    const baseUrl = process.env.WEBHOOK_BASE_URL || 'https://flowforge.app';
+    const webhookUrl = config.url || `${baseUrl}/api/webhooks/${secret}`;
+    return { ok: true, webhookUrl, secret };
+  }
+
+  async verifyHTTPApi(config: { baseUrl: string; headers?: Record<string, string> }): Promise<{
+    ok: boolean;
+    statusCode: number;
+    message: string;
+  }> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const response = await fetch(config.baseUrl, {
+        method: 'GET',
+        headers: config.headers || {},
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      return {
+        ok: response.ok,
+        statusCode: response.status,
+        message: response.ok ? `API responded with ${response.status}` : `API returned ${response.status}`,
+      };
+    } catch (error: any) {
+      this.logger.error('HTTP API verify failed', error);
+      return { ok: false, statusCode: 0, message: error.message || 'Connection failed' };
+    }
+  }
+
+  async verifyDatabase(config: { connectionString: string }): Promise<{
+    ok: boolean;
+    message: string;
+  }> {
+    try {
+      const url = new URL(config.connectionString);
+      const protocol = url.protocol.replace(':', '');
+
+      if (['postgresql', 'postgres'].includes(protocol)) {
+        const { Client } = await import('pg');
+        const client = new Client({ connectionString: config.connectionString });
+        await client.connect();
+        await client.query('SELECT 1');
+        await client.end();
+        return { ok: true, message: `PostgreSQL connection verified (${url.hostname})` };
+      }
+
+      if (protocol === 'mysql') {
+        return { ok: true, message: `MySQL connection format verified (${url.hostname})` };
+      }
+
+      return { ok: true, message: `Database connection format verified (${protocol}://${url.hostname})` };
+    } catch (error: any) {
+      this.logger.error('Database verify failed', error);
+      return { ok: false, message: error.message || 'Database connection failed' };
+    }
+  }
+
   async verifyTelegramBot(botToken: string): Promise<{
     ok: boolean;
     botId: number;
@@ -114,9 +199,12 @@ export class IntegrationsService {
   private sanitizeConfig(config: Record<string, any>): Record<string, any> {
     if (!config) return {};
     const sanitized = { ...config };
-    if (sanitized.botToken) {
-      const token = sanitized.botToken as string;
-      sanitized.botToken = token.slice(0, 8) + '...' + token.slice(-4);
+    const sensitiveKeys = ['botToken', 'password', 'secret', 'connectionString', 'apiKey'];
+    for (const key of sensitiveKeys) {
+      if (sanitized[key] && typeof sanitized[key] === 'string') {
+        const val = sanitized[key] as string;
+        sanitized[key] = val.length > 12 ? val.slice(0, 4) + '••••' + val.slice(-4) : '••••••••';
+      }
     }
     return sanitized;
   }

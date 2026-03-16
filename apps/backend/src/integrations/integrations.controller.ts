@@ -9,7 +9,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { IntegrationsService } from './integrations.service';
-import { CreateIntegrationDto, VerifyTelegramDto } from './integrations.dto';
+import {
+  CreateIntegrationDto,
+  VerifyTelegramDto,
+  VerifySMTPDto,
+  VerifyWebhookDto2,
+  VerifyHTTPApiDto,
+  VerifyDatabaseDto,
+} from './integrations.dto';
 
 @ApiTags('Integrations')
 @ApiBearerAuth()
@@ -39,5 +46,29 @@ export class IntegrationsController {
   @ApiOperation({ summary: 'Verify Telegram bot token' })
   verifyTelegram(@Body() dto: VerifyTelegramDto) {
     return this.integrationsService.verifyTelegramBot(dto.botToken);
+  }
+
+  @Post('smtp/verify')
+  @ApiOperation({ summary: 'Verify SMTP connection' })
+  verifySMTP(@Body() dto: VerifySMTPDto) {
+    return this.integrationsService.verifySMTP(dto);
+  }
+
+  @Post('webhook/verify')
+  @ApiOperation({ summary: 'Generate webhook URL' })
+  verifyWebhook(@Body() dto: VerifyWebhookDto2) {
+    return this.integrationsService.verifyWebhook(dto);
+  }
+
+  @Post('http-api/verify')
+  @ApiOperation({ summary: 'Verify HTTP API endpoint' })
+  verifyHTTPApi(@Body() dto: VerifyHTTPApiDto) {
+    return this.integrationsService.verifyHTTPApi(dto);
+  }
+
+  @Post('database/verify')
+  @ApiOperation({ summary: 'Verify database connection' })
+  verifyDatabase(@Body() dto: VerifyDatabaseDto) {
+    return this.integrationsService.verifyDatabase(dto);
   }
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useAuthStore } from '@/stores/auth-store';
-import { Moon, Sun, Bell } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
+import { NotificationDropdown } from '@/components/layout/notification-dropdown';
 
 export function Header() {
   const user = useAuthStore((s) => s.user);
@@ -21,11 +22,7 @@ export function Header() {
     <header className="flex h-14 items-center justify-between border-b bg-card/80 backdrop-blur-sm px-6">
       <div />
       <div className="flex items-center gap-2">
-        {/* Notification bell (non-functional, UI polish) */}
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full ring-2 ring-card" />
-        </Button>
+        <NotificationDropdown />
 
         {/* Theme toggle */}
         <Button

@@ -55,6 +55,7 @@ model User {
 
   workflows     Workflow[]
   integrations  Integration[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -177,4 +178,21 @@ model Integration {
   @@index([userId])
   @@index([type])
   @@map("integrations")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // execution_failed, execution_completed, workflow_activated, etc.
+  title     String
+  message   String
+  data      Json     @default("{}")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
 }

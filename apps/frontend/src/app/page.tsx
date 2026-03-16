@@ -20,6 +20,7 @@ const triggers = [
   { icon: Globe, name: 'Webhook', desc: 'Мгновенный запуск по HTTP-запросу' },
   { icon: Clock, name: 'Расписание (Cron)', desc: 'Автозапуск по расписанию' },
   { icon: Mail, name: 'Email', desc: 'Триггер при получении письма' },
+  { icon: Send, name: 'Telegram', desc: 'Запуск по команде в Telegram-боте' },
 ];
 
 const actions = [
@@ -104,7 +105,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-            Визуальный конструктор workflow с 3 типами триггеров, 5 типами действий,
+            Визуальный конструктор workflow с 4 типами триггеров, 5 типами действий,
             мониторингом в реальном времени и надёжной обработкой ошибок.
           </p>
 
@@ -129,7 +130,7 @@ export default function LandingPage() {
       {/* ── Triggers ── */}
       <section className="max-w-6xl mx-auto px-6 py-16">
         <div className="text-center mb-10">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2">3 типа триггеров</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2">4 типа триггеров</h2>
           <p className="text-muted-foreground">Запускайте workflow любым удобным способом</p>
         </div>
 
