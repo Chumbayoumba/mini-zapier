@@ -13,7 +13,7 @@ import {
   CreateIntegrationDto,
   VerifyTelegramDto,
   VerifySMTPDto,
-  VerifyWebhookDto2,
+  VerifyWebhookDto,
   VerifyHTTPApiDto,
   VerifyDatabaseDto,
 } from './integrations.dto';
@@ -56,7 +56,7 @@ export class IntegrationsController {
 
   @Post('webhook/verify')
   @ApiOperation({ summary: 'Generate webhook URL' })
-  verifyWebhook(@Body() dto: VerifyWebhookDto2) {
+  verifyWebhook(@Body() dto: VerifyWebhookDto) {
     return this.integrationsService.verifyWebhook(dto);
   }
 

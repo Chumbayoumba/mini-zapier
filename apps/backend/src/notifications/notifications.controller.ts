@@ -39,16 +39,16 @@ export class NotificationsController {
     return { count };
   }
 
-  @Patch(':id/read')
-  @ApiOperation({ summary: 'Mark notification as read' })
-  markAsRead(@Request() req: any, @Param('id') id: string) {
-    return this.notificationsService.markAsRead(req.user.sub, id);
-  }
-
   @Patch('read-all')
   @ApiOperation({ summary: 'Mark all notifications as read' })
   markAllAsRead(@Request() req: any) {
     return this.notificationsService.markAllAsRead(req.user.sub);
+  }
+
+  @Patch(':id/read')
+  @ApiOperation({ summary: 'Mark notification as read' })
+  markAsRead(@Request() req: any, @Param('id') id: string) {
+    return this.notificationsService.markAsRead(req.user.sub, id);
   }
 
   @Delete(':id')

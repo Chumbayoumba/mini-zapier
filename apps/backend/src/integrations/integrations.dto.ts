@@ -55,7 +55,7 @@ export class VerifySMTPDto {
   secure?: boolean;
 }
 
-export class VerifyWebhookDto2 {
+export class VerifyWebhookDto {
   @ApiProperty({ example: 'My Webhook' })
   @IsString()
   @IsNotEmpty()

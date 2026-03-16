@@ -206,6 +206,20 @@ export class IntegrationsService {
         sanitized[key] = val.length > 12 ? val.slice(0, 4) + '••••' + val.slice(-4) : '••••••••';
       }
     }
+    // Sanitize header values (may contain API keys)
+    if (sanitized.headers && typeof sanitized.headers === 'object') {
+      const maskedHeaders: Record<string, string> = {};
+      for (const [hKey, hVal] of Object.entries(sanitized.headers)) {
+        if (typeof hVal === 'string' && hVal.length > 0) {
+          maskedHeaders[hKey] = hVal.length > 12
+            ? hVal.slice(0, 4) + '••••' + hVal.slice(-4)
+            : '••••••••';
+        } else {
+          maskedHeaders[hKey] = '••••••••';
+        }
+      }
+      sanitized.headers = maskedHeaders;
+    }
     return sanitized;
   }
 }

@@ -1,7 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { TriggersService } from './triggers.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CronService } from './cron/cron.service';
+import { TelegramTriggerService } from './telegram/telegram-trigger.service';
 
 describe('TriggersService', () => {
   let service: TriggersService;
@@ -41,6 +43,14 @@ describe('TriggersService', () => {
         {
           provide: CronService,
           useValue: { scheduleCron: jest.fn(), stopCron: jest.fn() },
+        },
+        {
+          provide: TelegramTriggerService,
+          useValue: { registerWebhook: jest.fn(), removeWebhook: jest.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn() },
         },
       ],
     }).compile();

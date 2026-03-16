@@ -215,7 +215,7 @@ export default function IntegrationsPage() {
         metadata = { webhookUrl: verifyResult.webhookUrl };
         break;
       case 'HTTP_API':
-        name = formData.name || new URL(formData.baseUrl).hostname;
+        try { name = formData.name || new URL(formData.baseUrl).hostname; } catch { name = formData.name || 'HTTP API'; }
         config = { baseUrl: formData.baseUrl, headers: formData.headerKey ? { [formData.headerKey]: formData.headerValue } : {} };
         metadata = { statusCode: verifyResult.statusCode, message: verifyResult.message };
         break;
