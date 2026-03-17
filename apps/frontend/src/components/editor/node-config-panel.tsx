@@ -71,10 +71,14 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
   ],
   SEND_EMAIL: [
     { key: 'integrationId', label: 'SMTP Server', placeholder: 'Use default server', inputType: 'select', options: [], hint: 'Select SMTP integration or leave empty for default' },
+    { key: 'toMode', label: 'Recipient Mode', placeholder: '', inputType: 'select', options: [
+      { value: 'manual', label: '✉️ Enter email manually' },
+      { value: 'auto_reply', label: '↩️ Auto-reply to trigger sender' },
+    ], hint: 'Auto-reply sends to the person who triggered the workflow' },
     { key: 'to', label: 'To', placeholder: 'user@example.com', required: true, hint: 'Comma-separated for multiple recipients' },
     { key: 'cc', label: 'CC', placeholder: 'cc@example.com', hint: 'Comma-separated' },
     { key: 'bcc', label: 'BCC', placeholder: 'bcc@example.com', hint: 'Comma-separated' },
-    { key: 'subject', label: 'Subject', placeholder: 'Notification: {{trigger.event}}', required: true, hint: 'Supports {{template}} variables' },
+    { key: 'subject', label: 'Subject', placeholder: 'Re: {{trigger.subject}}', required: true, hint: 'Email subject line — use {{trigger.subject}} to include original subject' },
     { key: 'body', label: 'Body', placeholder: 'Hello {{trigger.name}},\n\nYour order has been processed.', inputType: 'textarea', rows: 5, hint: 'Supports {{template}} variables' },
     { key: 'isHtml', label: 'Format', inputType: 'select', placeholder: '', options: [
       { value: 'false', label: 'Plain Text' },
@@ -276,6 +280,22 @@ export function NodeConfigPanel() {
 
   const config = (selectedNode.data?.config as Record<string, string>) || {};
 
+  // Auto-hide IMAP fields when email integration is selected (not Manual)
+  if (nodeType === 'EMAIL' && isTrigger && fields && config.integrationId) {
+    fields = fields.map((f) =>
+      ['imapHost', 'imapPort', 'imapUser', 'imapPassword'].includes(f.key)
+        ? { ...f, hidden: true }
+        : f
+    );
+  }
+
+  // Hide 'to' field when auto-reply mode is selected in Send Email
+  if (nodeType === 'SEND_EMAIL' && !isTrigger && fields && config.toMode === 'auto_reply') {
+    fields = fields.map((f) =>
+      f.key === 'to' ? { ...f, hidden: true } : f
+    );
+  }
+
   // Auto-initialize select fields with first option when config is empty
   const initRef = useRef<string | null>(null);
   useEffect(() => {
@@ -293,8 +313,13 @@ export function NodeConfigPanel() {
   }, [selectedNode.id, fields, config, updateNodeData]);
 
   const handleChange = (key: string, value: string) => {
+    const updates: Record<string, string> = { [key]: value };
+    // Auto-set 'to' field when switching to auto-reply mode
+    if (key === 'toMode' && value === 'auto_reply') {
+      updates.to = '{{trigger.from}}';
+    }
     updateNodeData(selectedNode.id, {
-      config: { ...config, [key]: value },
+      config: { ...config, ...updates },
     });
   };
 
@@ -389,6 +414,34 @@ export function NodeConfigPanel() {
             <p className="text-[11px] text-green-600 dark:text-green-400 leading-relaxed">
               Chat ID определяется автоматически из триггера — бот ответит тому пользователю, 
               который написал сообщение. Поле Chat ID можно оставить пустым.
+            </p>
+          </div>
+        )}
+
+        {/* Email Trigger: Integration credentials info */}
+        {nodeType === 'EMAIL' && isTrigger && config.integrationId && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-3">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Zap className="h-3.5 w-3.5 text-blue-500" />
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">Credentials from integration</p>
+            </div>
+            <p className="text-[11px] text-blue-600 dark:text-blue-400 leading-relaxed">
+              IMAP connection settings are loaded automatically from the selected integration.
+              Only the email filter below can be customized.
+            </p>
+          </div>
+        )}
+
+        {/* Send Email: Auto-reply mode info */}
+        {nodeType === 'SEND_EMAIL' && !isTrigger && config.toMode === 'auto_reply' && (
+          <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 p-3">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Reply className="h-3.5 w-3.5 text-green-500" />
+              <p className="text-xs font-semibold text-green-700 dark:text-green-300">Auto-reply mode</p>
+            </div>
+            <p className="text-[11px] text-green-600 dark:text-green-400 leading-relaxed">
+              The email will be sent to the address from the trigger event automatically.
+              The &quot;To&quot; field is set to {'{{trigger.from}}'}.
             </p>
           </div>
         )}

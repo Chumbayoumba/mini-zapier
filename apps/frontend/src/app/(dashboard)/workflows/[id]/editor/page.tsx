@@ -24,6 +24,7 @@ import { useEditorKeyboardShortcuts } from '@/hooks/use-editor-keyboard-shortcut
 import { useAutoSave } from '@/hooks/use-auto-save';
 import { NodeConfigPanel } from '@/components/editor/node-config-panel';
 import { EditorToolbar } from '@/components/editor/editor-toolbar';
+import { ExecutionConsole } from '@/components/editor/execution-console';
 import TriggerNode from '@/components/editor/nodes/trigger-node';
 import ActionNode from '@/components/editor/nodes/action-node';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
@@ -129,6 +130,8 @@ function EditorCanvas() {
     try {
       await api.post(`/workflows/${workflowId}/execute`);
       toast.success('Workflow execution started');
+      setConsoleOpen(true);
+      setRunTrigger((prev) => prev + 1);
     } catch {
       toast.error('Failed to start execution');
     }
@@ -146,6 +149,8 @@ function EditorCanvas() {
   }, []);
 
   const [isDragOver, setIsDragOver] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [runTrigger, setRunTrigger] = useState(0);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -289,6 +294,14 @@ function EditorCanvas() {
           </ReactFlow>
           <MultiSelectToolbar />
         </div>
+
+        {/* Execution Console */}
+        <ExecutionConsole
+          workflowId={workflowId}
+          isOpen={consoleOpen}
+          onClose={() => setConsoleOpen(false)}
+          runTrigger={runTrigger}
+        />
       </div>
 
       {/* Config Panel */}

@@ -86,6 +86,14 @@ function getIntegrationMeta(type: string) {
   return INTEGRATION_TYPES.find((t) => t.type === type) || INTEGRATION_TYPES[0];
 }
 
+const VERIFY_BG_CLASSES: Record<IntegrationType, string> = {
+  TELEGRAM: 'bg-sky-600 hover:bg-sky-700',
+  SMTP: 'bg-amber-600 hover:bg-amber-700',
+  WEBHOOK: 'bg-violet-600 hover:bg-violet-700',
+  HTTP_API: 'bg-emerald-600 hover:bg-emerald-700',
+  DATABASE: 'bg-rose-600 hover:bg-rose-700',
+};
+
 export default function IntegrationsPage() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<'list' | 'select' | 'form'>('list');
@@ -345,7 +353,7 @@ export default function IntegrationsPage() {
             <button
               onClick={handleVerify}
               disabled={isVerifying || !canVerify()}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 transition-colors ${meta.color.replace('text-', 'bg-').replace('500', '600')} hover:opacity-90`}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 transition-colors ${selectedType ? VERIFY_BG_CLASSES[selectedType] : 'bg-primary hover:bg-primary/90'}`}
             >
               {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
               Verify
