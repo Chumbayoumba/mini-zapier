@@ -51,12 +51,16 @@ export function ExecutionConsole({ workflowId, isOpen, onClose, runTrigger }: Ex
     const startDelay = setTimeout(() => {
       const fetchExecution = async () => {
         try {
-          const res = await api.get('/executions', { params: { workflowId, limit: 1 } });
-          const execs = res.data?.data || res.data;
-          if (Array.isArray(execs) && execs.length > 0) {
-            setExecution(execs[0]);
+          // Step 1: get latest execution ID for this workflow
+          const listRes = await api.get('/executions', { params: { workflowId, limit: 1 } });
+          const execs = listRes.data?.executions || listRes.data?.data || (Array.isArray(listRes.data) ? listRes.data : []);
+          if (execs.length > 0) {
+            // Step 2: fetch full execution with stepLogs
+            const detailRes = await api.get(`/executions/${execs[0].id}`);
+            const fullExec = detailRes.data;
+            setExecution(fullExec);
             setIsLoading(false);
-            if (['COMPLETED', 'FAILED'].includes(execs[0].status)) {
+            if (['COMPLETED', 'FAILED'].includes(fullExec.status)) {
               if (pollRef.current) clearInterval(pollRef.current);
             }
           }
@@ -125,7 +129,7 @@ export function ExecutionConsole({ workflowId, isOpen, onClose, runTrigger }: Ex
                 {execution.status}
               </span>
               <span className="text-[10px] text-muted-foreground">
-                {duration(execution.startedAt, execution.completedAt)}
+                {duration(execution.startedAt || execution.createdAt, execution.completedAt)}
               </span>
             </>
           )}
@@ -156,7 +160,7 @@ export function ExecutionConsole({ workflowId, isOpen, onClose, runTrigger }: Ex
           {execution && (
             <>
               <div className="text-muted-foreground">
-                <span className="text-blue-400">[{new Date(execution.startedAt).toLocaleTimeString()}]</span>
+                <span className="text-blue-400">[{new Date(execution.startedAt || execution.createdAt).toLocaleTimeString()}]</span>
                 {' '}Execution started · ID: {execution.id.slice(0, 12)}...
               </div>
 
