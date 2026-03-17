@@ -314,9 +314,12 @@ export function NodeConfigPanel() {
 
   const handleChange = (key: string, value: string) => {
     const updates: Record<string, string> = { [key]: value };
-    // Auto-set 'to' field when switching to auto-reply mode
+    // Auto-set 'to' and 'subject' fields when switching to auto-reply mode
     if (key === 'toMode' && value === 'auto_reply') {
       updates.to = '{{trigger.from}}';
+      if (!config.subject) {
+        updates.subject = 'Re: {{trigger.subject}}';
+      }
     }
     updateNodeData(selectedNode.id, {
       config: { ...config, ...updates },
