@@ -28,12 +28,12 @@ export class EngineService {
     const TRIGGER_TYPES = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'];
     return nodes.map((n: any) => {
       if (n.data?.type) return n; // already React Flow format
-      // Flat format — wrap into data
+      // Flat format — wrap into data. Use node ID prefix to detect trigger vs action.
       const nodeType = n.type;
-      const isTrigger = TRIGGER_TYPES.includes(nodeType);
+      const isTrigger = n.id?.startsWith('trigger') && TRIGGER_TYPES.includes(nodeType);
       return {
         ...n,
-        type: isTrigger ? 'triggerNode' : n.type,
+        type: isTrigger ? 'triggerNode' : 'actionNode',
         data: {
           type: nodeType,
           label: n.label || n.name || nodeType,
