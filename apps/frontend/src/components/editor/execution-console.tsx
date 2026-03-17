@@ -161,7 +161,7 @@ export function ExecutionConsole({ workflowId, isOpen, onClose, runTrigger }: Ex
           {execution && (
             <>
               <div className="text-muted-foreground">
-                <span className="text-blue-400">[{new Date(execution.startedAt || execution.createdAt).toLocaleTimeString()}]</span>
+                <span className="text-blue-400">[{new Date(execution.startedAt || execution.createdAt || Date.now()).toLocaleTimeString()}]</span>
                 {' '}Execution started · ID: {execution.id.slice(0, 12)}...
               </div>
 
