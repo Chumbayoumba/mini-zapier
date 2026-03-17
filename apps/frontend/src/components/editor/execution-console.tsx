@@ -22,6 +22,7 @@ interface Execution {
   status: string;
   startedAt: string;
   completedAt?: string;
+  createdAt?: string;
   error?: string;
   stepLogs: StepLog[];
 }
