@@ -32,7 +32,7 @@ function TriggerNode({ data, selected }: NodeProps) {
 
   return (
     <div
-      className={`relative min-w-[160px] rounded-xl border-2 bg-white dark:bg-gray-900 shadow-lg transition-all ${
+      className={`relative min-w-[160px] rounded-xl border-2 bg-white dark:bg-gray-900 shadow-lg transition-shadow ${
         selected ? 'ring-2 ring-offset-2' : ''
       }`}
       style={{
