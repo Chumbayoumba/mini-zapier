@@ -124,7 +124,9 @@ export class EngineService {
         data: {
           status: 'COMPLETED',
           completedAt: endTime,
-          duration: endTime.getTime() - execution.startedAt!.getTime(),
+          duration: execution.startedAt
+            ? endTime.getTime() - execution.startedAt.getTime()
+            : 0,
         },
       });
 

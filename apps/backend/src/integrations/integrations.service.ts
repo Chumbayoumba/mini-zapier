@@ -199,7 +199,7 @@ export class IntegrationsService {
   private sanitizeConfig(config: Record<string, any>): Record<string, any> {
     if (!config) return {};
     const sanitized = { ...config };
-    const sensitiveKeys = ['botToken', 'password', 'secret', 'connectionString', 'apiKey'];
+    const sensitiveKeys = ['botToken', 'password', 'secret', 'connectionString', 'apiKey', 'token', 'Authorization'];
     for (const key of sensitiveKeys) {
       if (sanitized[key] && typeof sanitized[key] === 'string') {
         const val = sanitized[key] as string;

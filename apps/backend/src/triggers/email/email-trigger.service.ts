@@ -49,10 +49,14 @@ export class EmailTriggerService implements OnModuleInit, OnModuleDestroy {
 
       try {
         const emails = await this.fetchNewEmails(config);
+
+        // Filter out system/bounce emails (MAILER-DAEMON, postmaster, etc.)
+        const nonSystem = emails.filter((e) => !this.isSystemEmail(e));
+
         const filter = config.filter || config.subjectFilter;
         const filtered = filter
-          ? emails.filter((e) => e.subject?.toLowerCase().includes(filter.toLowerCase()))
-          : emails;
+          ? nonSystem.filter((e) => e.subject?.toLowerCase().includes(filter.toLowerCase()))
+          : nonSystem;
 
         for (const email of filtered) {
           await this.queueService.addExecution(trigger.workflowId, {
@@ -148,5 +152,31 @@ export class EmailTriggerService implements OnModuleInit, OnModuleDestroy {
       imap.once('error', (err: any) => reject(err));
       imap.connect();
     });
+  }
+
+  private isSystemEmail(email: { from: string; subject: string }): boolean {
+    const from = (email.from || '').toLowerCase();
+    const subject = (email.subject || '').toLowerCase();
+
+    const systemSenders = [
+      'mailer-daemon',
+      'postmaster',
+      'mail delivery',
+      'mail transport',
+    ];
+    if (systemSenders.some((s) => from.includes(s))) return true;
+
+    const bounceSubjects = [
+      'undeliverable',
+      'delivery failed',
+      'mail delivery failed',
+      'non-delivery',
+      'delivery failure',
+      'returned mail',
+      'delivery status notification',
+    ];
+    if (bounceSubjects.some((p) => subject.includes(p))) return true;
+
+    return false;
   }
 }
