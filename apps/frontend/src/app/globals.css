@@ -54,10 +54,9 @@
   }
 }
 
-/* Editor handle hover effects */
+/* Editor handle hover effects — only transition box-shadow to avoid conflicting with ReactFlow transform */
 .react-flow__handle {
-  transform-origin: center center;
-  transition: all 0.15s ease;
+  transition: box-shadow 0.15s ease;
 }
 
 .react-flow__handle:hover {

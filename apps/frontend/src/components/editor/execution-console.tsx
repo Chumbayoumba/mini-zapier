@@ -51,7 +51,7 @@ export function ExecutionConsole({ workflowId, isOpen, onClose, runTrigger }: Ex
     const startDelay = setTimeout(() => {
       const fetchExecution = async () => {
         try {
-          const res = await api.get(`/workflows/${workflowId}/executions`, { params: { limit: 1 } });
+          const res = await api.get('/executions', { params: { workflowId, limit: 1 } });
           const execs = res.data?.data || res.data;
           if (Array.isArray(execs) && execs.length > 0) {
             setExecution(execs[0]);
