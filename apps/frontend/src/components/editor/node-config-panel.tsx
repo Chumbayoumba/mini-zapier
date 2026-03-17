@@ -34,6 +34,7 @@ const TRIGGER_FIELDS: Record<string, Array<ConfigField>> = {
     { key: 'timezone', label: 'Timezone', placeholder: 'UTC' },
   ],
   EMAIL: [
+    { key: 'integrationId', label: 'Email Server', placeholder: 'Use default server', inputType: 'select', options: [], hint: 'Select SMTP integration for IMAP settings' },
     { key: 'imapHost', label: 'IMAP Host', placeholder: 'imap.gmail.com', required: true },
     { key: 'imapPort', label: 'IMAP Port', placeholder: '993' },
     { key: 'imapUser', label: 'IMAP Username', placeholder: 'user@gmail.com', required: true },
@@ -55,6 +56,7 @@ const TRIGGER_FIELDS: Record<string, Array<ConfigField>> = {
 
 const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
   HTTP_REQUEST: [
+    { key: 'integrationId', label: 'API Integration', placeholder: 'Configure manually', inputType: 'select', options: [], hint: 'Select HTTP API integration or configure manually below' },
     { key: 'url', label: 'URL', placeholder: 'https://api.example.com/data', required: true, hint: 'Supports {{template}} variables' },
     { key: 'method', label: 'Method', placeholder: 'GET', inputType: 'select', options: [
       { value: 'GET', label: 'GET' },
@@ -68,6 +70,7 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
     { key: 'timeout', label: 'Timeout (ms)', placeholder: '30000', type: 'number', hint: 'Request timeout in milliseconds' },
   ],
   SEND_EMAIL: [
+    { key: 'integrationId', label: 'SMTP Server', placeholder: 'Use default server', inputType: 'select', options: [], hint: 'Select SMTP integration or leave empty for default' },
     { key: 'to', label: 'To', placeholder: 'user@example.com', required: true, hint: 'Comma-separated for multiple recipients' },
     { key: 'cc', label: 'CC', placeholder: 'cc@example.com', hint: 'Comma-separated' },
     { key: 'bcc', label: 'BCC', placeholder: 'bcc@example.com', hint: 'Comma-separated' },
@@ -89,6 +92,7 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
     ] },
   ],
   DATABASE: [
+    { key: 'integrationId', label: 'Database Connection', placeholder: 'Select database', inputType: 'select', options: [], hint: 'Select database integration from Integrations page' },
     { key: 'operation', label: 'Operation', placeholder: 'SELECT', inputType: 'select', readOnly: true, options: [
       { value: 'SELECT', label: 'SELECT' },
     ] },
@@ -138,7 +142,7 @@ export function NodeConfigPanel() {
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // Fetch integrations for Telegram dropdown
+  // Fetch integrations for node dropdowns (Telegram, SMTP, HTTP API, Database)
   const { data: integrations = [] } = useQuery<Array<{ id: string; name: string; type: string }>>({
     queryKey: ['integrations'],
     queryFn: async () => {
@@ -176,6 +180,25 @@ export function NodeConfigPanel() {
     );
   }
 
+  // Inject SMTP options into EMAIL trigger integrationId field
+  if (nodeType === 'EMAIL' && isTrigger && fields) {
+    const smtpIntegrations = integrations.filter((i) => i.type === 'SMTP');
+    fields = fields.map((f) =>
+      f.key === 'integrationId'
+        ? {
+            ...f,
+            options: [
+              { value: '', label: '🔧 Manual configuration' },
+              ...smtpIntegrations.map((s) => ({ value: s.id, label: `📧 ${s.name}` })),
+            ],
+            hint: smtpIntegrations.length === 0
+              ? 'Configure IMAP settings manually below'
+              : 'Select preset or configure manually',
+          }
+        : f,
+    );
+  }
+
   // Inject bot options into TELEGRAM action integrationId field
   if (nodeType === 'TELEGRAM' && !isTrigger && fields) {
     const telegramBots = integrations.filter((i) => i.type === 'TELEGRAM');
@@ -193,6 +216,62 @@ export function NodeConfigPanel() {
       }
       return f;
     });
+  }
+
+  // Inject SMTP integration options into SEND_EMAIL action
+  if (nodeType === 'SEND_EMAIL' && !isTrigger && fields) {
+    const smtpIntegrations = integrations.filter((i) => i.type === 'SMTP');
+    fields = fields.map((f) =>
+      f.key === 'integrationId'
+        ? {
+            ...f,
+            options: [
+              { value: '', label: '🔧 Default (server settings)' },
+              ...smtpIntegrations.map((s) => ({ value: s.id, label: `📧 ${s.name}` })),
+            ],
+            hint: smtpIntegrations.length === 0
+              ? 'Uses default server SMTP. Add SMTP in Integrations for custom servers'
+              : 'Select SMTP server or use default',
+          }
+        : f,
+    );
+  }
+
+  // Inject HTTP API integration options into HTTP_REQUEST action
+  if (nodeType === 'HTTP_REQUEST' && !isTrigger && fields) {
+    const httpIntegrations = integrations.filter((i) => i.type === 'HTTP_API');
+    fields = fields.map((f) =>
+      f.key === 'integrationId'
+        ? {
+            ...f,
+            options: [
+              { value: '', label: '🔧 Configure manually' },
+              ...httpIntegrations.map((h) => ({ value: h.id, label: `🌐 ${h.name}` })),
+            ],
+            hint: httpIntegrations.length === 0
+              ? 'Configure URL and headers manually below'
+              : 'Select API preset or configure manually',
+          }
+        : f,
+    );
+  }
+
+  // Inject Database integration options into DATABASE action
+  if (nodeType === 'DATABASE' && !isTrigger && fields) {
+    const dbIntegrations = integrations.filter((i) => i.type === 'DATABASE');
+    fields = fields.map((f) =>
+      f.key === 'integrationId'
+        ? {
+            ...f,
+            options: [
+              ...dbIntegrations.map((d) => ({ value: d.id, label: `🗄️ ${d.name}` })),
+            ],
+            hint: dbIntegrations.length === 0
+              ? '⚠️ No databases. Go to Integrations → Add Database'
+              : 'Select database connection',
+          }
+        : f,
+    );
   }
 
   const config = (selectedNode.data?.config as Record<string, string>) || {};
