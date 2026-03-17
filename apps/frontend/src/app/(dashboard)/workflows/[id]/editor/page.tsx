@@ -25,6 +25,7 @@ import { useAutoSave } from '@/hooks/use-auto-save';
 import { NodeConfigPanel } from '@/components/editor/node-config-panel';
 import { EditorToolbar } from '@/components/editor/editor-toolbar';
 import { ExecutionConsole } from '@/components/editor/execution-console';
+import { NodeContextMenu } from '@/components/editor/node-context-menu';
 import TriggerNode from '@/components/editor/nodes/trigger-node';
 import ActionNode from '@/components/editor/nodes/action-node';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
@@ -128,7 +129,44 @@ function EditorCanvas() {
 
   const handleRun = async () => {
     try {
-      await api.post(`/workflows/${workflowId}/execute`);
+      const currentNodes = useEditorStore.getState().nodes;
+      const triggerNode = currentNodes.find(
+        (n) => n.type === 'triggerNode' || n.id?.startsWith('trigger-'),
+      );
+
+      let testTriggerData: Record<string, unknown> = {};
+      if (triggerNode) {
+        const triggerType = triggerNode.data?.type as string;
+        const cfg = (triggerNode.data?.config as Record<string, unknown>) || {};
+        if (triggerType === 'EMAIL') {
+          testTriggerData = {
+            from: 'test@example.com',
+            subject: 'Test Email',
+            body: 'Manual test run',
+            date: new Date().toISOString(),
+          };
+        } else if (triggerType === 'WEBHOOK') {
+          testTriggerData = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: { test: true, timestamp: Date.now() },
+          };
+        } else if (triggerType === 'TELEGRAM') {
+          testTriggerData = {
+            chatId: String(cfg.chatId || ''),
+            from: 'TestUser',
+            text: '/test manual run',
+            messageId: Date.now(),
+          };
+        } else if (triggerType === 'CRON') {
+          testTriggerData = {
+            scheduledAt: new Date().toISOString(),
+            cron: String(cfg.cron || '* * * * *'),
+          };
+        }
+      }
+
+      await api.post(`/workflows/${workflowId}/execute`, testTriggerData);
       toast.success('Workflow execution started');
       setConsoleOpen(true);
       setRunTrigger((prev) => prev + 1);
@@ -151,6 +189,7 @@ function EditorCanvas() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [runTrigger, setRunTrigger] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -190,6 +229,34 @@ function EditorCanvas() {
     event.dataTransfer.dropEffect = 'move';
     setIsDragOver(true);
   }, []);
+
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, node });
+  }, []);
+
+  const handleContextMenuEdit = useCallback((node: Node) => {
+    setSelectedNode(node);
+  }, [setSelectedNode]);
+
+  const handleContextMenuDuplicate = useCallback((node: Node) => {
+    const newNode: Node = {
+      id: `${node.type === 'triggerNode' ? 'trigger' : 'action'}-${Date.now()}`,
+      type: node.type,
+      position: { x: node.position.x + 50, y: node.position.y + 50 },
+      data: { ...node.data },
+    };
+    addNode(newNode);
+    toast.success('Node duplicated');
+  }, [addNode]);
+
+  const handleContextMenuDelete = useCallback((node: Node) => {
+    const { nodes, edges } = useEditorStore.getState();
+    useEditorStore.getState().setNodes(nodes.filter((n) => n.id !== node.id));
+    useEditorStore.getState().setEdges(edges.filter((e) => e.source !== node.id && e.target !== node.id));
+    setSelectedNode(null);
+    toast.success('Node deleted');
+  }, [setSelectedNode]);
 
   return (
     <div className="flex h-[calc(100vh-8rem)]">
@@ -272,7 +339,8 @@ function EditorCanvas() {
             onConnect={handleConnect}
             isValidConnection={isValidConnection}
             onNodeClick={(_, node) => setSelectedNode(node)}
-            onPaneClick={() => setSelectedNode(null)}
+            onPaneClick={() => { setSelectedNode(null); setContextMenu(null); }}
+            onNodeContextMenu={handleNodeContextMenu}
             onDrop={onDrop}
             onDragOver={onDragOver}
             selectionOnDrag
@@ -293,6 +361,17 @@ function EditorCanvas() {
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           </ReactFlow>
           <MultiSelectToolbar />
+          {contextMenu && (
+            <NodeContextMenu
+              x={contextMenu.x}
+              y={contextMenu.y}
+              node={contextMenu.node}
+              onClose={() => setContextMenu(null)}
+              onEdit={handleContextMenuEdit}
+              onDuplicate={handleContextMenuDuplicate}
+              onDelete={handleContextMenuDelete}
+            />
+          )}
         </div>
 
         {/* Execution Console */}

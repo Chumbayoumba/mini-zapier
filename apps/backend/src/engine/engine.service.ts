@@ -310,6 +310,25 @@ export class EngineService {
       }
     }
 
+    // Resolve integrationId → SMTP credentials for SEND_EMAIL actions
+    if (node.data.type === 'SEND_EMAIL' && resolvedConfig.integrationId) {
+      try {
+        const integration = await this.prisma.integration.findUnique({
+          where: { id: resolvedConfig.integrationId },
+        });
+        if (integration?.config) {
+          const cfg = integration.config as any;
+          if (!resolvedConfig.smtpHost && cfg.host) resolvedConfig.smtpHost = cfg.host;
+          if (!resolvedConfig.smtpPort && cfg.port) resolvedConfig.smtpPort = cfg.port;
+          if (!resolvedConfig.smtpUser && cfg.user) resolvedConfig.smtpUser = cfg.user;
+          if (!resolvedConfig.smtpPassword && cfg.password) resolvedConfig.smtpPassword = cfg.password;
+          if (!resolvedConfig.from && cfg.user) resolvedConfig.from = cfg.user;
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to resolve SMTP integration ${resolvedConfig.integrationId}: ${e}`);
+      }
+    }
+
     // Create step log once (log resolved config for debugging)
     const stepLog = await this.prisma.executionStepLog.create({
       data: {

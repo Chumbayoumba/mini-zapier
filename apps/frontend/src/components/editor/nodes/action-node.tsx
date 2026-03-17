@@ -46,7 +46,7 @@ function ActionNode({ data, selected }: NodeProps) {
       <Handle
         type="target"
         position={Position.Top}
-        className="!h-3 !w-3 !border-2 !border-white hover:!scale-125 transition-transform"
+        className="!h-3 !w-3 !border-2 !border-white transition-shadow"
         style={{ background: color }}
       />
 
@@ -71,7 +71,7 @@ function ActionNode({ data, selected }: NodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!h-3 !w-3 !border-2 !border-white !bg-gray-400 hover:!scale-125 transition-transform"
+        className="!h-3 !w-3 !border-2 !border-white !bg-gray-400 transition-shadow"
         style={{ background: color }}
       />
     </div>
