@@ -104,7 +104,7 @@ export function ExecutionConsole({ workflowId, isOpen, onClose, runTrigger }: Ex
     }
   };
 
-  const duration = (start: string, end?: string) => {
+  const duration = (start?: string | null, end?: string | null) => {
     if (!start) return '';
     const s = new Date(start).getTime();
     const e = end ? new Date(end).getTime() : Date.now();
