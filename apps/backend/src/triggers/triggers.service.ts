@@ -32,13 +32,16 @@ export class TriggersService {
 
     const definition = workflow.definition as any;
     const nodes = definition?.nodes || [];
+    const TRIGGER_TYPES = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'];
     const triggerNode = nodes.find((n: any) =>
-      n.type === 'triggerNode' || ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(n.data?.type),
+      n.type === 'triggerNode' ||
+      TRIGGER_TYPES.includes(n.data?.type) ||
+      TRIGGER_TYPES.includes(n.type),
     );
     if (!triggerNode) return;
 
-    const triggerType = triggerNode.data?.type;
-    const config = triggerNode.data?.config || {};
+    const triggerType = triggerNode.data?.type || triggerNode.type;
+    const config = triggerNode.data?.config || triggerNode.config || {};
 
     const trigger = await this.prisma.trigger.upsert({
       where: { workflowId },
@@ -101,16 +104,19 @@ export class TriggersService {
 
     const definition = workflow.definition as any;
     const nodes = definition?.nodes || [];
+    const TRIGGER_TYPES = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'];
     const triggerNode = nodes.find((n: any) =>
-      n.type === 'triggerNode' || ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(n.data?.type),
+      n.type === 'triggerNode' ||
+      TRIGGER_TYPES.includes(n.data?.type) ||
+      TRIGGER_TYPES.includes(n.type),
     );
     if (!triggerNode) return;
 
     const trigger = await this.prisma.trigger.findUnique({ where: { workflowId } });
     if (!trigger) return;
 
-    const triggerType = triggerNode.data?.type;
-    const config = triggerNode.data?.config || {};
+    const triggerType = triggerNode.data?.type || triggerNode.type;
+    const config = triggerNode.data?.config || triggerNode.config || {};
 
     await this.prisma.trigger.update({
       where: { workflowId },

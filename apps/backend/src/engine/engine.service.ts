@@ -20,6 +20,29 @@ export class EngineService {
     private actionRegistry: ActionRegistry,
   ) {}
 
+  /**
+   * Normalize nodes to always have React Flow format (node.data.type/config/label).
+   * Handles flat-format nodes created via API (type at top level, no data wrapper).
+   */
+  private normalizeNodes(nodes: any[]): any[] {
+    const TRIGGER_TYPES = ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'];
+    return nodes.map((n: any) => {
+      if (n.data?.type) return n; // already React Flow format
+      // Flat format — wrap into data
+      const nodeType = n.type;
+      const isTrigger = TRIGGER_TYPES.includes(nodeType);
+      return {
+        ...n,
+        type: isTrigger ? 'triggerNode' : n.type,
+        data: {
+          type: nodeType,
+          label: n.label || n.name || nodeType,
+          config: n.config || {},
+        },
+      };
+    });
+  }
+
   async executeWorkflow(workflowId: string, triggerData?: any) {
     const workflow = await this.prisma.workflow.findUnique({ where: { id: workflowId } });
     if (!workflow) throw new Error(`Workflow ${workflowId} not found`);
@@ -34,7 +57,9 @@ export class EngineService {
     });
 
     const definition = workflow.definition as any;
-    const { nodes, edges, integrations } = definition;
+    const nodes = this.normalizeNodes(definition?.nodes || []);
+    const edges = definition?.edges || [];
+    const integrations = definition?.integrations;
     const errorConfig: WorkflowErrorConfig =
       (workflow as any).errorConfig
         ? { ...DEFAULT_ERROR_CONFIG, ...((workflow as any).errorConfig as any) }
@@ -142,7 +167,9 @@ export class EngineService {
     if (execution.status !== 'PAUSED') throw new Error('Can only resume paused executions');
 
     const definition = execution.workflow.definition as any;
-    const { nodes, edges, integrations } = definition;
+    const nodes = this.normalizeNodes(definition?.nodes || []);
+    const edges = definition?.edges || [];
+    const integrations = definition?.integrations;
     const errorConfig: WorkflowErrorConfig =
       (execution.workflow as any).errorConfig
         ? { ...DEFAULT_ERROR_CONFIG, ...((execution.workflow as any).errorConfig as any) }
