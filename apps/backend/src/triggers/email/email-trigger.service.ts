@@ -41,7 +41,26 @@ export class EmailTriggerService implements OnModuleInit, OnModuleDestroy {
     for (const trigger of triggers) {
       if (trigger.workflow.status !== 'ACTIVE') continue;
 
-      const config = trigger.config as Record<string, any>;
+      let config = { ...(trigger.config as Record<string, any>) };
+
+      // Resolve IMAP credentials from integration if integrationId is set
+      if (config.integrationId && !config.imapHost) {
+        try {
+          const integration = await this.prisma.integration.findUnique({
+            where: { id: config.integrationId },
+          });
+          if (integration) {
+            const ic = integration.config as Record<string, any>;
+            config.imapHost = ic.imapHost || ic.host;
+            config.imapPort = ic.imapPort || 993;
+            config.imapUser = ic.imapUser || ic.user;
+            config.imapPassword = ic.imapPassword || ic.password;
+          }
+        } catch (e: any) {
+          this.logger.error(`Failed to resolve integration for trigger ${trigger.id}: ${e.message}`);
+        }
+      }
+
       if (!config.imapHost || !config.imapUser || !config.imapPassword) {
         this.logger.warn(`Trigger ${trigger.id} missing IMAP config, skipping`);
         continue;
