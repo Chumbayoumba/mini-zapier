@@ -27,13 +27,15 @@ project_name: "minizapierpraktika"
 # Note that when using the JetBrains backend, language servers are not used and this list is correspondingly ignored.
 languages:
 - typescript
-
+- python
+- bash
+- yaml
 # the encoding used by text files in the project
 # For a list of possible encodings, see https://docs.python.org/3.11/library/codecs.html#standard-encodings
 encoding: "utf-8"
 
 # whether to use project's .gitignore files to ignore files
-ignore_all_files_in_gitignore: true
+ignore_all_files_in_gitignore: false
 
 # list of additional paths to ignore in all projects
 # same syntax as gitignore, so you can use * and **

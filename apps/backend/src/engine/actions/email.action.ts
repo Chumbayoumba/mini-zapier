@@ -52,10 +52,29 @@ export class EmailAction implements ActionHandler {
 
     const transporter = this.createTransporter(config, _context);
 
-    const senderFrom =
+    // Build a valid sender address — ensure it always contains @domain
+    const rawFrom =
       from ||
       _context?.integrations?.email?.from ||
       this.configService.get('SMTP_USER');
+    const smtpUserForFrom =
+      config.smtpUser ||
+      _context?.integrations?.email?.user ||
+      this.configService.get('SMTP_USER');
+    const smtpHostForFrom =
+      config.smtpHost ||
+      _context?.integrations?.email?.host ||
+      this.configService.get('SMTP_HOST');
+
+    let senderFrom = rawFrom;
+    if (senderFrom && !senderFrom.includes('@') && smtpHostForFrom) {
+      // Bare username like "mailuser" → "mailuser@egor-dev.ru"
+      const domain = smtpHostForFrom.replace(/^mail\./, '');
+      senderFrom = `${senderFrom}@${domain}`;
+    } else if (!senderFrom && smtpUserForFrom && smtpHostForFrom) {
+      const domain = smtpHostForFrom.replace(/^mail\./, '');
+      senderFrom = `${smtpUserForFrom}@${domain}`;
+    }
 
     this.logger.log(`Sending email to ${cleanTo}: ${subject}`);
 
@@ -97,10 +116,14 @@ export class EmailAction implements ActionHandler {
       _context?.integrations?.email?.password ||
       this.configService.get('SMTP_PASSWORD');
 
+    // Derive the mail domain for EHLO and message-id
+    const mailDomain = smtpHost ? smtpHost.replace(/^mail\./, '') : 'localhost';
+
     return nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: false,
+      name: mailDomain, // EHLO hostname & message-id domain
       auth: {
         user: smtpUser,
         pass: smtpPass,
