@@ -21,6 +21,8 @@ import {
   XCircle,
   Loader2,
   ExternalLink,
+  Copy,
+  Link2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -232,6 +234,38 @@ export default function WorkflowDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Webhook URL - shown when trigger type is WEBHOOK and workflow is ACTIVE */}
+      {workflow.trigger?.type === 'WEBHOOK' && workflow.trigger?.webhookToken && workflow.status === 'ACTIVE' && (
+        <Card className="border-violet-500/30 bg-violet-500/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Link2 className="h-4 w-4 text-violet-500" />
+              <span className="text-sm font-medium">Webhook URL</span>
+              <Badge variant="outline" className="text-[10px]">ACTIVE</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">
+              Send a POST request to this URL to trigger the workflow. The request body will be available as <code className="text-violet-400">{'{{trigger.body.*}}'}</code>
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs bg-background/80 rounded-md px-3 py-2 border overflow-x-auto select-all">
+                {`${typeof window !== 'undefined' ? window.location.origin : 'https://zapier.egor-dev.ru'}/api/webhooks/${workflow.trigger.webhookToken}`}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const url = `${window.location.origin}/api/webhooks/${workflow.trigger?.webhookToken}`;
+                  navigator.clipboard.writeText(url);
+                  toast.success('Webhook URL copied!');
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Workflow Structure */}
       <Card>

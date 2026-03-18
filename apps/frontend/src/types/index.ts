@@ -64,6 +64,7 @@ export interface Trigger {
   type: TriggerType;
   config: Record<string, any>;
   isActive: boolean;
+  webhookToken?: string | null;
 }
 
 export interface WorkflowExecution {
