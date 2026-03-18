@@ -43,6 +43,21 @@ export class TriggersService {
     const triggerType = triggerNode.data?.type || triggerNode.type;
     const config = triggerNode.data?.config || triggerNode.config || {};
 
+    // For WEBHOOK triggers: use integration's webhookSecret if integrationId is set
+    let webhookToken: string | null = null;
+    if (triggerType === 'WEBHOOK') {
+      if (config.integrationId) {
+        const integration = await this.prisma.integration.findUnique({
+          where: { id: config.integrationId },
+        });
+        webhookToken = integration?.webhookSecret || randomUUID();
+      } else {
+        webhookToken = randomUUID();
+      }
+    }
+
+    const existingTrigger = await this.prisma.trigger.findUnique({ where: { workflowId } });
+
     const trigger = await this.prisma.trigger.upsert({
       where: { workflowId },
       create: {
@@ -50,12 +65,16 @@ export class TriggersService {
         type: triggerType,
         config,
         isActive: true,
-        webhookToken: triggerType === 'WEBHOOK' ? randomUUID() : null,
+        webhookToken,
       },
       update: {
         type: triggerType,
         config,
         isActive: true,
+        // Update token only if integration changed or no token exists yet
+        ...(triggerType === 'WEBHOOK' && (!existingTrigger?.webhookToken || config.integrationId)
+          ? { webhookToken }
+          : {}),
       },
     });
 
@@ -118,9 +137,26 @@ export class TriggersService {
     const triggerType = triggerNode.data?.type || triggerNode.type;
     const config = triggerNode.data?.config || triggerNode.config || {};
 
+    // For WEBHOOK triggers: update token if integration changed
+    const updateData: any = { type: triggerType, config };
+    if (triggerType === 'WEBHOOK' && trigger.isActive) {
+      const oldConfig = trigger.config as any;
+      if (config.integrationId && config.integrationId !== oldConfig?.integrationId) {
+        const integration = await this.prisma.integration.findUnique({
+          where: { id: config.integrationId },
+        });
+        if (integration?.webhookSecret) {
+          updateData.webhookToken = integration.webhookSecret;
+        }
+      } else if (!config.integrationId && oldConfig?.integrationId) {
+        // Switched from integration to auto-generated
+        updateData.webhookToken = randomUUID();
+      }
+    }
+
     await this.prisma.trigger.update({
       where: { workflowId },
-      data: { type: triggerType, config },
+      data: updateData,
     });
 
     if (trigger.type === 'CRON' || triggerType === 'CRON') {

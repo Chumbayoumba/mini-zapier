@@ -27,6 +27,7 @@ interface ConfigField {
 
 const TRIGGER_FIELDS: Record<string, Array<ConfigField>> = {
   WEBHOOK: [
+    { key: 'integrationId', label: 'Webhook Endpoint', placeholder: 'Select webhook...', inputType: 'select', options: [], hint: 'Select a webhook from Integrations or use auto-generated URL' },
     { key: 'secret', label: 'Secret (optional)', placeholder: 'HMAC secret for signature validation' },
   ],
   CRON: [
@@ -198,6 +199,25 @@ export function NodeConfigPanel() {
             hint: smtpIntegrations.length === 0
               ? 'Configure IMAP settings manually below'
               : 'Select preset or configure manually',
+          }
+        : f,
+    );
+  }
+
+  // Inject WEBHOOK integration options into WEBHOOK trigger integrationId field
+  if (nodeType === 'WEBHOOK' && isTrigger && fields) {
+    const webhookIntegrations = integrations.filter((i) => i.type === 'WEBHOOK');
+    fields = fields.map((f) =>
+      f.key === 'integrationId'
+        ? {
+            ...f,
+            options: [
+              { value: '', label: '🔗 Auto-generate URL' },
+              ...webhookIntegrations.map((w) => ({ value: w.id, label: `🌐 ${w.name}` })),
+            ],
+            hint: webhookIntegrations.length === 0
+              ? 'URL will be generated when workflow is activated'
+              : 'Select a webhook integration or auto-generate',
           }
         : f,
     );
@@ -417,6 +437,20 @@ export function NodeConfigPanel() {
             <p className="text-[11px] text-green-600 dark:text-green-400 leading-relaxed">
               Chat ID определяется автоматически из триггера — бот ответит тому пользователю, 
               который написал сообщение. Поле Chat ID можно оставить пустым.
+            </p>
+          </div>
+        )}
+
+        {/* Webhook Trigger: Integration info */}
+        {nodeType === 'WEBHOOK' && isTrigger && config.integrationId && (
+          <div className="rounded-lg border border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950/30 p-3">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Zap className="h-3.5 w-3.5 text-violet-500" />
+              <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">Linked webhook integration</p>
+            </div>
+            <p className="text-[11px] text-violet-600 dark:text-violet-400 leading-relaxed">
+              The webhook URL from the selected integration will be used as the trigger endpoint.
+              Activate the workflow to see the URL.
             </p>
           </div>
         )}
