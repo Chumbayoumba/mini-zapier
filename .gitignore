@@ -39,3 +39,16 @@ docker-compose.override.yml
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Test scripts with credentials
+test-webhook.bat
+test-webhook.sh
+*.local.bat
+*.local.sh
+
+# Audit / internal docs
+AUDIT_SUMMARY.md
+FRONTEND_AUDIT_COMPLETE.md
+QUICK_REFERENCE.md
+README_AUDIT.md
+ARCHITECTURE_DIAGRAMS.md
