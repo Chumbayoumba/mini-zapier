@@ -47,6 +47,42 @@ export class EngineService {
     const workflow = await this.prisma.workflow.findUnique({ where: { id: workflowId } });
     if (!workflow) throw new Error(`Workflow ${workflowId} not found`);
 
+    const definition = workflow.definition as any;
+    const rawNodes = this.normalizeNodes(definition?.nodes || []);
+
+    // If no triggerData provided (manual run), build test data from the trigger node
+    if (!triggerData || (typeof triggerData === 'object' && Object.keys(triggerData).length === 0)) {
+      const TRIGGER_TYPES_SET = new Set(['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM']);
+      const triggerNode = rawNodes.find(
+        (n: any) =>
+          n.type === 'triggerNode' ||
+          n.id?.startsWith('trigger-') ||
+          TRIGGER_TYPES_SET.has(n.data?.type),
+      );
+      if (triggerNode) {
+        const tType = triggerNode.data?.type;
+        this.logger.warn(`No triggerData provided for manual run — building defaults for trigger type: ${tType}`);
+        if (tType === 'EMAIL') {
+          triggerData = {
+            from: 'test@example.com',
+            subject: 'Test Email',
+            body: 'Manual test run',
+            date: new Date().toISOString(),
+          };
+        } else if (tType === 'WEBHOOK') {
+          triggerData = { method: 'POST', headers: { 'content-type': 'application/json' }, body: { test: true } };
+        } else if (tType === 'TELEGRAM') {
+          const cfg = triggerNode.data?.config || {};
+          triggerData = { chatId: String(cfg.chatId || ''), from: 'TestUser', text: '/test', messageId: Date.now() };
+        } else if (tType === 'CRON') {
+          const cfg = triggerNode.data?.config || {};
+          triggerData = { scheduledAt: new Date().toISOString(), cron: String(cfg.cron || '* * * * *') };
+        }
+      }
+    }
+
+    this.logger.log({ msg: 'triggerData for execution', triggerData: JSON.stringify(triggerData || {}) });
+
     const execution = await this.prisma.workflowExecution.create({
       data: {
         workflowId,
@@ -56,8 +92,7 @@ export class EngineService {
       },
     });
 
-    const definition = workflow.definition as any;
-    const nodes = this.normalizeNodes(definition?.nodes || []);
+    const nodes = rawNodes;
     const edges = definition?.edges || [];
     const integrations = definition?.integrations;
     const errorConfig: WorkflowErrorConfig =

@@ -45,7 +45,46 @@ export default function WorkflowDetailPage() {
 
   const handleRun = async () => {
     try {
-      await executeMutation.mutateAsync({ id });
+      // Build test trigger data based on trigger node type (same as editor)
+      const defNodes = (workflow?.definition as any)?.nodes || [];
+      const triggerNode = defNodes.find(
+        (n: any) =>
+          n.type === 'triggerNode' ||
+          n.id?.startsWith('trigger-') ||
+          ['WEBHOOK', 'CRON', 'EMAIL', 'TELEGRAM'].includes(n.data?.type || n.type),
+      );
+      let testTriggerData: Record<string, unknown> = {};
+      if (triggerNode) {
+        const tType = triggerNode.data?.type || triggerNode.type;
+        const cfg = triggerNode.data?.config || triggerNode.config || {};
+        if (tType === 'EMAIL') {
+          testTriggerData = {
+            from: 'test@example.com',
+            subject: 'Test Email',
+            body: 'Manual test run',
+            date: new Date().toISOString(),
+          };
+        } else if (tType === 'WEBHOOK') {
+          testTriggerData = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: { test: true, timestamp: Date.now() },
+          };
+        } else if (tType === 'TELEGRAM') {
+          testTriggerData = {
+            chatId: String(cfg.chatId || ''),
+            from: 'TestUser',
+            text: '/test manual run',
+            messageId: Date.now(),
+          };
+        } else if (tType === 'CRON') {
+          testTriggerData = {
+            scheduledAt: new Date().toISOString(),
+            cron: String(cfg.cron || '* * * * *'),
+          };
+        }
+      }
+      await executeMutation.mutateAsync({ id, data: testTriggerData });
       refetch();
     } catch {
       toast.error('Failed to start execution');

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { WorkflowsService } from './workflows.service';
 import { EngineService } from '../engine/engine.service';
@@ -88,16 +88,18 @@ export class WorkflowsController {
   @Post(':id/execute')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: false }))
   @ApiOperation({ summary: 'Manually execute a workflow' })
   @ApiResponse({ status: 200, description: 'Workflow execution started, returns execution ID' })
   @ApiResponse({ status: 404, description: 'Workflow not found' })
   async execute(
     @Param('id') id: string,
     @CurrentUser('sub') userId: string,
-    @Body() body: Record<string, any>,
+    @Body() body: any,
   ) {
     await this.workflowsService.findById(id, userId);
-    const executionId = await this.engineService.executeWorkflow(id, body || {});
+    const triggerData = body && typeof body === 'object' && Object.keys(body).length > 0 ? body : undefined;
+    const executionId = await this.engineService.executeWorkflow(id, triggerData);
     return { executionId };
   }
 
