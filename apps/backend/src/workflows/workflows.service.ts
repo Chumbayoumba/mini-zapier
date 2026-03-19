@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
+import { WorkflowValidationService } from './workflow-validation.service';
 
 @Injectable()
 export class WorkflowsService {
@@ -11,6 +12,7 @@ export class WorkflowsService {
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
+    private validationService: WorkflowValidationService,
   ) {}
 
   async create(userId: string, dto: CreateWorkflowDto) {
@@ -129,7 +131,17 @@ export class WorkflowsService {
   }
 
   async activate(id: string, userId: string) {
-    await this.findById(id, userId);
+    const workflow = await this.findById(id, userId);
+
+    // Validate workflow before activation
+    const validation = await this.validationService.validateBeforeActivation(workflow);
+    if (!validation.valid) {
+      throw new BadRequestException({
+        message: 'Workflow validation failed',
+        errors: validation.errors,
+      });
+    }
+
     const updated = await this.prisma.workflow.update({
       where: { id },
       data: { status: 'ACTIVE' },

@@ -75,7 +75,20 @@ export class IntegrationsService {
       return { ok: true, message: `SMTP connection to ${config.host}:${config.port} verified` };
     } catch (error: any) {
       this.logger.error('SMTP verify failed', error);
-      return { ok: false, message: error.message || 'SMTP connection failed' };
+      let message = 'SMTP connection failed';
+      const code = error.code || error.errno || '';
+      if (code === 'ECONNREFUSED') {
+        message = `Cannot connect to SMTP server ${config.host}:${config.port} — connection refused`;
+      } else if (code === 'EAUTH' || error.responseCode === 535) {
+        message = 'SMTP authentication failed — check username and password';
+      } else if (code === 'ETIMEDOUT' || code === 'ESOCKET') {
+        message = `SMTP connection timeout — server ${config.host} is not responding`;
+      } else if (code === 'ENOTFOUND') {
+        message = `SMTP host "${config.host}" not found — check the hostname`;
+      } else if (error.message) {
+        message = error.message;
+      }
+      return { ok: false, message };
     }
   }
 
@@ -157,7 +170,8 @@ export class IntegrationsService {
       const data = await response.json();
 
       if (!data.ok) {
-        return { ok: false, botId: 0, botName: '', botUsername: '' };
+        const errMsg = data.description || 'Invalid bot token';
+        return { ok: false, botId: 0, botName: '', botUsername: '', error: `Telegram API error: ${errMsg}` } as any;
       }
 
       const bot = data.result;
@@ -190,9 +204,15 @@ export class IntegrationsService {
         botUsername: bot.username,
         photoUrl,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Telegram verify failed', error);
-      return { ok: false, botId: 0, botName: '', botUsername: '' };
+      let message = 'Telegram API connection failed';
+      if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        message = 'Cannot reach Telegram API — check network connection';
+      } else if (error.message) {
+        message = error.message;
+      }
+      return { ok: false, botId: 0, botName: '', botUsername: '', error: message } as any;
     }
   }
 
