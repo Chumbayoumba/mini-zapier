@@ -89,7 +89,7 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
   TELEGRAM: [
     { key: 'integrationId', label: 'Telegram Bot', placeholder: 'Select a bot...', inputType: 'select', required: true, options: [], hint: 'Select from your integrations' },
     { key: 'chatId', label: 'Chat ID', placeholder: 'Auto from trigger', hint: 'Leave empty to reply to the user who triggered this workflow' },
-    { key: 'message', label: 'Message', placeholder: 'Привет, {{trigger.from.first_name}}! 👋\n\nДобро пожаловать!', inputType: 'textarea', rows: 4, required: true, hint: 'Supports {{template}} variables — see list below' },
+    { key: 'message', label: 'Message', placeholder: 'Hello, {{trigger.from.first_name}}! 👋\n\nWelcome!', inputType: 'textarea', rows: 4, required: true, hint: 'Supports {{template}} variables — see list below' },
     { key: 'parseMode', label: 'Parse Mode', inputType: 'select', placeholder: '', options: [
       { value: 'HTML', label: 'HTML' },
       { value: 'Markdown', label: 'Markdown' },
@@ -126,20 +126,20 @@ const CRON_EXAMPLES = [
 
 // Template variables available from Telegram trigger
 const TELEGRAM_TEMPLATE_VARS = [
-  { var: '{{trigger.from.first_name}}', desc: 'Имя пользователя', example: 'Иван' },
+  { var: '{{trigger.from.first_name}}', desc: 'User first name', example: 'John' },
   { var: '{{trigger.from.username}}', desc: 'Username (@...)', example: 'ivan123' },
-  { var: '{{trigger.text}}', desc: 'Текст сообщения', example: '/start' },
-  { var: '{{trigger.chat.id}}', desc: 'ID чата', example: '123456789' },
-  { var: '{{trigger.command}}', desc: 'Команда (без /)', example: 'start' },
-  { var: '{{trigger.commandArgs}}', desc: 'Аргументы команды', example: 'arg1 arg2' },
+  { var: '{{trigger.text}}', desc: 'Message text', example: '/start' },
+  { var: '{{trigger.chat.id}}', desc: 'Chat ID', example: '123456789' },
+  { var: '{{trigger.command}}', desc: 'Command (without /)', example: 'start' },
+  { var: '{{trigger.commandArgs}}', desc: 'Command arguments', example: 'arg1 arg2' },
 ];
 
 // Message templates for quick start
 const TELEGRAM_MESSAGE_TEMPLATES = [
-  { label: '👋 Приветствие /start', text: 'Привет, {{trigger.from.first_name}}! 👋\n\nЯ бот, созданный через Mini-Zapier.\nОтправь /help чтобы узнать что я умею.' },
-  { label: '❓ Ответ на /help', text: '📋 Доступные команды:\n\n/start — Начать\n/help — Помощь\n\nИли просто отправь мне сообщение!' },
-  { label: '💬 Эхо-ответ', text: 'Ты написал: {{trigger.text}}\n\nОтправитель: {{trigger.from.first_name}} (@{{trigger.from.username}})' },
-  { label: '🔔 Уведомление', text: '🔔 Новое сообщение от {{trigger.from.first_name}}:\n\n{{trigger.text}}' },
+  { label: '👋 Welcome /start', text: 'Hello, {{trigger.from.first_name}}! 👋\n\nI am a bot created with FlowForge.\nSend /help to see what I can do.' },
+  { label: '❓ Reply to /help', text: '📋 Available commands:\n\n/start — Start\n/help — Help\n\nOr just send me a message!' },
+  { label: '💬 Echo reply', text: 'You wrote: {{trigger.text}}\n\nSender: {{trigger.from.first_name}} (@{{trigger.from.username}})' },
+  { label: '🔔 Notification', text: '🔔 New message from {{trigger.from.first_name}}:\n\n{{trigger.text}}' },
 ];
 
 export function NodeConfigPanel() {
@@ -178,8 +178,8 @@ export function NodeConfigPanel() {
             ...f,
             options: telegramBots.map((b) => ({ value: b.id, label: b.name })),
             hint: telegramBots.length === 0
-              ? '⚠️ Нет ботов. Перейдите в Интеграции → Добавить Telegram бота'
-              : 'Выберите бота для этого триггера',
+              ? '⚠️ No bots found. Go to Integrations → Add Telegram bot'
+              : 'Select a bot for this trigger',
           }
         : f,
     );
@@ -232,10 +232,10 @@ export function NodeConfigPanel() {
           ...f,
           options: telegramBots.map((b) => ({ value: b.id, label: b.name })),
           hint: telegramBots.length === 0
-            ? '⚠️ Нет ботов. Добавьте на странице Интеграции'
+            ? '⚠️ No bots found. Add one on the Integrations page'
             : hasTelegramTrigger
-              ? 'Выберите того же бота что и в триггере'
-              : 'Выберите бота для отправки сообщений',
+              ? 'Select the same bot as in the trigger'
+              : 'Select a bot for sending messages',
         };
       }
       return f;
@@ -375,7 +375,7 @@ export function NodeConfigPanel() {
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{selectedNode.data?.label as string}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-              {isTrigger ? '⚡ Триггер' : '▶️ Действие'} · {nodeType}
+              {isTrigger ? '⚡ Trigger' : '▶️ Action'} · {nodeType}
             </p>
           </div>
         </div>
@@ -387,8 +387,8 @@ export function NodeConfigPanel() {
       <div className="p-4 space-y-4">
         {/* General section */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Общее</p>
-          <label className="text-xs font-medium">Название ноды</label>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">General</p>
+          <label className="text-xs font-medium">Node Name</label>
           <Input
             className="mt-1 h-8 text-sm"
             value={(selectedNode.data?.label as string) || ''}
@@ -418,11 +418,10 @@ export function NodeConfigPanel() {
           <div className="rounded-lg border border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30 p-3">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Zap className="h-3.5 w-3.5 text-sky-500" />
-              <p className="text-xs font-semibold text-sky-700 dark:text-sky-300">Как работает</p>
+              <p className="text-xs font-semibold text-sky-700 dark:text-sky-300">How it works</p>
             </div>
             <p className="text-[11px] text-sky-600 dark:text-sky-400 leading-relaxed">
-              Выберите бота и тип события. Когда пользователь отправит боту сообщение 
-              соответствующего типа — workflow запустится автоматически.
+              Select a bot and event type. When a user sends a matching message to the bot, the workflow will start automatically.
             </p>
           </div>
         )}
@@ -432,11 +431,10 @@ export function NodeConfigPanel() {
           <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30 p-3">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Reply className="h-3.5 w-3.5 text-green-500" />
-              <p className="text-xs font-semibold text-green-700 dark:text-green-300">Авто-ответ</p>
+              <p className="text-xs font-semibold text-green-700 dark:text-green-300">Auto-reply</p>
             </div>
             <p className="text-[11px] text-green-600 dark:text-green-400 leading-relaxed">
-              Chat ID определяется автоматически из триггера — бот ответит тому пользователю, 
-              который написал сообщение. Поле Chat ID можно оставить пустым.
+              Chat ID is determined automatically from the trigger — the bot will reply to the user who sent the message. You can leave Chat ID empty.
             </p>
           </div>
         )}
@@ -486,7 +484,7 @@ export function NodeConfigPanel() {
         {/* Configuration section */}
         {fields && fields.length > 0 && (
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Настройки</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Settings</p>
             <div className="space-y-3">
               {fields.filter((f) => !f.hidden).map((field) => {
                 const value = config[field.key] || '';
@@ -568,13 +566,13 @@ export function NodeConfigPanel() {
             {nodeType === 'TELEGRAM' && isTrigger && (
               <div className="mt-3 rounded-md bg-muted/50 p-2.5">
                 <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">
-                  📤 Данные триггера для Action-нод:
+                  📤 Trigger data for Action nodes:
                 </p>
                 <div className="space-y-0.5 text-[10px] text-muted-foreground">
-                  <p><code className="font-mono text-primary">{'{{trigger.text}}'}</code> — текст сообщения</p>
-                  <p><code className="font-mono text-primary">{'{{trigger.chat.id}}'}</code> — ID чата</p>
-                  <p><code className="font-mono text-primary">{'{{trigger.from.first_name}}'}</code> — имя</p>
-                  <p><code className="font-mono text-primary">{'{{trigger.command}}'}</code> — команда</p>
+                  <p><code className="font-mono text-primary">{'{{trigger.text}}'}</code> — message text</p>
+                  <p><code className="font-mono text-primary">{'{{trigger.chat.id}}'}</code> — chat ID</p>
+                  <p><code className="font-mono text-primary">{'{{trigger.from.first_name}}'}</code> — first name</p>
+                  <p><code className="font-mono text-primary">{'{{trigger.command}}'}</code> — command</p>
                 </div>
               </div>
             )}
@@ -589,7 +587,7 @@ export function NodeConfigPanel() {
                     onClick={() => setShowTemplates(!showTemplates)}
                   >
                     <MessageSquare className="h-3 w-3" />
-                    {showTemplates ? 'Скрыть шаблоны' : '📝 Шаблоны сообщений'}
+                    {showTemplates ? 'Hide templates' : '📝 Message templates'}
                   </button>
                   {showTemplates && (
                     <div className="mt-2 space-y-1.5">
@@ -610,7 +608,7 @@ export function NodeConfigPanel() {
                 {/* Telegram template variables clickable */}
                 <div className="mt-3 rounded-md bg-muted/50 p-2.5">
                   <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">
-                    🔗 Переменные (нажмите чтобы вставить):
+                    🔗 Variables (click to insert):
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {TELEGRAM_TEMPLATE_VARS.map((v) => (
@@ -618,7 +616,7 @@ export function NodeConfigPanel() {
                         key={v.var}
                         type="button"
                         className="inline-flex items-center rounded border bg-background px-1.5 py-0.5 font-mono text-[9px] text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-                        title={`${v.desc} (пример: ${v.example})`}
+                        title={`${v.desc} (example: ${v.example})`}
                         onClick={() => insertTemplate(v.var)}
                       >
                         {v.var.replace(/[{}]/g, '').replace('trigger.', '')}
@@ -626,7 +624,7 @@ export function NodeConfigPanel() {
                     ))}
                   </div>
                   <p className="text-[9px] text-muted-foreground mt-1.5">
-                    Нажмите на переменную — она добавится в поле Message
+                    Click a variable to insert it into the Message field
                   </p>
                 </div>
               </>
@@ -649,10 +647,10 @@ export function NodeConfigPanel() {
 
         {/* Notes section */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Заметки</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Notes</p>
           <Input
             className="h-8 text-sm"
-            placeholder="Необязательное описание"
+            placeholder="Optional description"
             value={(selectedNode.data?.description as string) || ''}
             onChange={(e) => updateNodeData(selectedNode.id, { description: e.target.value })}
           />

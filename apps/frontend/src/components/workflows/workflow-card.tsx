@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Play, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import type { Workflow } from '@/types';
@@ -34,15 +35,37 @@ export function WorkflowCard({ workflow, onRun, onDelete }: WorkflowCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[workflow.status] || 'bg-gray-400'}`} />
-            <Link
-              href={`/workflows/${workflow.id}`}
-              className="text-sm font-semibold hover:underline truncate block"
-            >
-              {workflow.name}
-            </Link>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={`/workflows/${workflow.id}`}
+                    className="text-sm font-semibold hover:underline truncate block"
+                  >
+                    {workflow.name}
+                  </Link>
+                </TooltipTrigger>
+                {workflow.name.length > 30 && (
+                  <TooltipContent side="top" className="max-w-xs">
+                    <p>{workflow.name}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
           {workflow.description && (
-            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 pl-4">{workflow.description}</p>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 pl-4 cursor-default">{workflow.description}</p>
+                </TooltipTrigger>
+                {workflow.description.length > 80 && (
+                  <TooltipContent side="bottom" className="max-w-sm">
+                    <p className="text-xs">{workflow.description}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
         <Badge variant={STATUS_BADGE[workflow.status] || 'secondary'} className="text-[10px] shrink-0">
