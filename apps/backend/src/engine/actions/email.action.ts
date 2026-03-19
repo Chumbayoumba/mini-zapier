@@ -37,7 +37,7 @@ export class EmailAction implements ActionHandler {
       throw new BadRequestException('Subject is required');
     }
 
-    const recipients = parseAndValidateEmails(to, '');
+    const recipients = parseAndValidateEmails(to, 'recipient');
     const cleanTo = recipients.join(', ');
 
     let cleanCc: string | undefined;

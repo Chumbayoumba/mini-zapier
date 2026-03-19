@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -20,23 +20,29 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useEditorStore } from '@/stores/editor-store';
+import { useExecutionStore } from '@/stores/execution-store';
 import { useWorkflow, useUpdateWorkflow } from '@/hooks/use-workflows';
-import { useEditorKeyboardShortcuts } from '@/hooks/use-editor-keyboard-shortcuts';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useAutoSave } from '@/hooks/use-auto-save';
-import { NodeConfigPanel } from '@/components/editor/node-config-panel';
+import { useExecutionSocket } from '@/hooks/use-execution-socket';
+import { NDVDrawer } from '@/components/editor/ndv/ndv-drawer';
 import { EditorToolbar } from '@/components/editor/editor-toolbar';
 import { ExecutionConsole } from '@/components/editor/execution-console';
 import { NodeContextMenu } from '@/components/editor/node-context-menu';
+import { NodePicker } from '@/components/editor/node-picker';
+import { HandlePlusButton } from '@/components/editor/handle-plus-button';
 import TriggerNode from '@/components/editor/nodes/trigger-node';
 import ActionNode from '@/components/editor/nodes/action-node';
 import LogicNode from '@/components/editor/nodes/logic-node';
+import StickyNote from '@/components/editor/nodes/sticky-note';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
 import { MultiSelectToolbar } from '@/components/editor/multi-select-toolbar';
 import { validateConnection, countTriggerNodes } from '@/lib/graph-validation';
+import { getAutoLayout } from '@/lib/auto-layout';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/error-handler';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LayoutGrid, Plus, StickyNote as StickyNoteIcon } from 'lucide-react';
 import api from '@/lib/api';
 
 const TRIGGER_TYPES = [
@@ -72,9 +78,12 @@ function EditorCanvas() {
   const { data: workflow, isLoading, error, refetch } = useWorkflow(workflowId);
   const updateWorkflow = useUpdateWorkflow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, getViewport } = useReactFlow();
 
   useAutoSave(workflowId);
+  useExecutionSocket(workflowId);
+
+  const isExecutionRunning = useExecutionStore((s) => s.isRunning);
 
   const {
     nodes,
@@ -88,8 +97,16 @@ function EditorCanvas() {
     selectedNode,
   } = useEditorStore();
 
+  const [nodePickerOpen, setNodePickerOpen] = useState(false);
+  const [nodePickerConnectFrom, setNodePickerConnectFrom] = useState<{ nodeId: string; handleId?: string } | null>(null);
+
   const nodeTypes: NodeTypes = useMemo(
-    () => ({ triggerNode: TriggerNode, actionNode: ActionNode, logicNode: LogicNode }),
+    () => ({
+      triggerNode: TriggerNode,
+      actionNode: ActionNode,
+      logicNode: LogicNode,
+      stickyNote: StickyNote,
+    }),
     [],
   );
 
@@ -125,28 +142,13 @@ function EditorCanvas() {
     }
   }, [workflowId, nodes, edges, updateWorkflow]);
 
-  useEditorKeyboardShortcuts({ onSave: handleSave });
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [runTrigger, setRunTrigger] = useState(0);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
 
-  useEffect(() => {
-    if (workflow?.definition) {
-      let def: { nodes?: unknown[]; edges?: unknown[] } = { nodes: [], edges: [] };
-      try {
-        def = typeof workflow.definition === 'string'
-          ? JSON.parse(workflow.definition)
-          : (workflow.definition as typeof def);
-      } catch {
-        // Invalid JSON definition, use empty
-      }
-      const parsedNodes = Array.isArray(def.nodes) ? (def.nodes as Node[]) : [];
-      const parsedEdges = Array.isArray(def.edges) ? (def.edges as typeof edges) : [];
-      setNodes(parsedNodes);
-      setEdges(parsedEdges);
-      useEditorStore.temporal.getState().clear();
-      useEditorStore.getState().markClean();
-    }
-  }, [workflow, setNodes, setEdges]);
-
-  const handleRun = async () => {
+  const handleRun = useCallback(async () => {
     try {
       const currentNodes = useEditorStore.getState().nodes;
       const triggerNode = currentNodes.find(
@@ -187,12 +189,48 @@ function EditorCanvas() {
 
       await api.post(`/workflows/${workflowId}/execute`, testTriggerData);
       toast.success('Workflow execution started');
+      useExecutionStore.getState().resetExecution();
       setConsoleOpen(true);
       setRunTrigger((prev) => prev + 1);
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
-  };
+  }, [workflowId]);
+
+  const openNodePicker = useCallback(() => {
+    setNodePickerConnectFrom(null);
+    setNodePickerOpen(true);
+  }, []);
+
+  const openNodePickerFrom = useCallback((connectFrom: { nodeId: string; handleId?: string }) => {
+    setNodePickerConnectFrom(connectFrom);
+    setNodePickerOpen(true);
+  }, []);
+
+  useKeyboardShortcuts({
+    onSave: handleSave,
+    onRun: handleRun,
+    onOpenNodePicker: openNodePicker,
+  });
+
+  useEffect(() => {
+    if (workflow?.definition) {
+      let def: { nodes?: unknown[]; edges?: unknown[] } = { nodes: [], edges: [] };
+      try {
+        def = typeof workflow.definition === 'string'
+          ? JSON.parse(workflow.definition)
+          : (workflow.definition as typeof def);
+      } catch {
+        // Invalid JSON definition, use empty
+      }
+      const parsedNodes = Array.isArray(def.nodes) ? (def.nodes as Node[]) : [];
+      const parsedEdges = Array.isArray(def.edges) ? (def.edges as typeof edges) : [];
+      setNodes(parsedNodes);
+      setEdges(parsedEdges);
+      useEditorStore.temporal.getState().clear();
+      useEditorStore.getState().markClean();
+    }
+  }, [workflow, setNodes, setEdges]);
 
   // Leave guard — warn on unsaved changes
   useEffect(() => {
@@ -204,11 +242,6 @@ function EditorCanvas() {
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
   }, []);
-
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [consoleOpen, setConsoleOpen] = useState(false);
-  const [runTrigger, setRunTrigger] = useState(0);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -285,6 +318,32 @@ function EditorCanvas() {
     setSelectedNode(null);
     toast.success('Node deleted');
   }, [setSelectedNode]);
+
+  const handleContextMenuAddNodeAfter = useCallback((node: Node) => {
+    openNodePickerFrom({ nodeId: node.id });
+  }, [openNodePickerFrom]);
+
+  const handleAutoLayout = useCallback(() => {
+    const { nodes, edges } = useEditorStore.getState();
+    if (nodes.length === 0) return;
+    const layouted = getAutoLayout(nodes, edges);
+    setNodes(layouted);
+    toast.success('Layout applied');
+  }, [setNodes]);
+
+  const handleAddStickyNote = useCallback(() => {
+    const vp = getViewport();
+    const centerX = (-vp.x + window.innerWidth / 2) / vp.zoom;
+    const centerY = (-vp.y + window.innerHeight / 2) / vp.zoom;
+    const newNode: Node = {
+      id: `sticky-${Date.now()}`,
+      type: 'stickyNote',
+      position: { x: centerX - 100, y: centerY - 75 },
+      data: { text: '', color: 'yellow' },
+      style: { width: 200, height: 150 },
+    };
+    addNode(newNode);
+  }, [addNode, getViewport]);
 
   if (isLoading) {
     return (
@@ -409,6 +468,11 @@ function EditorCanvas() {
           onSave={handleSave}
           onRun={handleRun}
           isSaving={updateWorkflow.isPending}
+          isRunning={isExecutionRunning}
+          onAutoLayout={handleAutoLayout}
+          onAddStickyNote={handleAddStickyNote}
+          onOpenNodePicker={openNodePicker}
+          onToggleMinimap={() => setShowMinimap((v) => !v)}
         />
 
         <div ref={reactFlowWrapper} className={`flex-1 relative ${isDragOver ? 'drag-over' : ''}`} onDragLeave={() => setIsDragOver(false)}>
@@ -435,6 +499,7 @@ function EditorCanvas() {
             deleteKeyCode={null}
           >
             <Controls className="!rounded-lg !border !shadow-sm" />
+            {showMinimap && (
             <MiniMap
               nodeStrokeWidth={3}
               zoomable
@@ -442,6 +507,7 @@ function EditorCanvas() {
               className="!bg-card !border !rounded-lg !shadow-sm"
               style={{ zIndex: 4 }}
             />
+            )}
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           </ReactFlow>
           {!hasNodes && (
@@ -453,6 +519,7 @@ function EditorCanvas() {
             </div>
           )}
           <MultiSelectToolbar />
+          <HandlePlusButton isOpen={nodePickerOpen} onOpenNodePicker={openNodePickerFrom} />
           {contextMenu && (
             <NodeContextMenu
               x={contextMenu.x}
@@ -462,9 +529,17 @@ function EditorCanvas() {
               onEdit={handleContextMenuEdit}
               onDuplicate={handleContextMenuDuplicate}
               onDelete={handleContextMenuDelete}
+              onAddNodeAfter={handleContextMenuAddNodeAfter}
             />
           )}
         </div>
+
+        {/* Node Picker */}
+        <NodePicker
+          isOpen={nodePickerOpen}
+          onClose={() => { setNodePickerOpen(false); setNodePickerConnectFrom(null); }}
+          connectFrom={nodePickerConnectFrom}
+        />
 
         {/* Execution Console */}
         <ExecutionConsole
@@ -475,8 +550,10 @@ function EditorCanvas() {
         />
       </div>
 
-      {/* Config Panel */}
-      {selectedNode && <NodeConfigPanel />}
+      {/* NDV Drawer */}
+      {selectedNode && (
+        <NDVDrawer workflowId={workflowId} />
+      )}
     </div>
   );
 }
@@ -488,3 +565,4 @@ export default function EditorPage() {
     </ReactFlowProvider>
   );
 }
+

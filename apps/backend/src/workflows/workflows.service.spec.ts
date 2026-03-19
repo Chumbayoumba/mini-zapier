@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { WorkflowsService } from './workflows.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { WorkflowValidationService } from './workflow-validation.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 describe('WorkflowsService', () => {
@@ -50,6 +51,7 @@ describe('WorkflowsService', () => {
         WorkflowsService,
         { provide: PrismaService, useValue: prisma },
         { provide: EventEmitter2, useValue: eventEmitter },
+        { provide: WorkflowValidationService, useValue: { validateBeforeActivation: jest.fn().mockResolvedValue({ valid: true, errors: [] }) } },
       ],
     }).compile();
 

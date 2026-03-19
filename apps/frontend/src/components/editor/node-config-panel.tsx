@@ -8,9 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { cn } from '@/lib/utils';
 import { validateNodeField } from '@/lib/node-validation';
-import { X, Settings2, Copy, Check, Zap, MessageSquare, Reply } from 'lucide-react';
+import { testIntegration } from '@/lib/integration-test';
+import { IntegrationWizard } from '@/components/integrations/integration-wizard';
+import { X, Settings2, Copy, Check, Zap, MessageSquare, Reply, Plus, Loader2 } from 'lucide-react';
 
 interface ConfigField {
   key: string;
@@ -196,6 +199,68 @@ const LOGIC_FIELDS: Record<string, Array<ConfigField>> = {
   MANUAL_TRIGGER: [
     { key: 'testData', label: 'Test Data (JSON)', placeholder: '{"key": "value"}', inputType: 'textarea', rows: 4, hint: 'JSON data to inject when manually triggered' },
   ],
+  OPENAI: [
+    { key: 'apiKey', label: 'API Key', placeholder: 'sk-...', type: 'password', required: true, hint: 'Your OpenAI API key' },
+    { key: 'operation', label: 'Operation', placeholder: '', inputType: 'select', options: [
+      { value: 'chat', label: '💬 Chat Completion' },
+      { value: 'image', label: '🎨 Image Generation (DALL-E)' },
+    ] },
+    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
+      { value: 'gpt-4o', label: 'GPT-4o' },
+      { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+      { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+    ] },
+    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3, hint: 'Sets the behavior of the AI' },
+    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, required: true, hint: 'Supports {{template}} variables' },
+    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number', hint: '0 = deterministic, 2 = creative' },
+    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
+    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
+      { value: 'text', label: 'Text' },
+      { value: 'json', label: 'JSON Object' },
+    ] },
+  ],
+  ANTHROPIC: [
+    { key: 'apiKey', label: 'API Key', placeholder: 'sk-ant-...', type: 'password', required: true, hint: 'Your Anthropic API key' },
+    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
+      { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+      { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+      { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+    ] },
+    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
+    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, required: true, hint: 'Supports {{template}} variables' },
+    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
+    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
+  ],
+  MISTRAL: [
+    { key: 'apiKey', label: 'API Key', placeholder: 'your-mistral-key', type: 'password', required: true, hint: 'Your Mistral API key' },
+    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
+      { value: 'mistral-large-latest', label: 'Mistral Large' },
+      { value: 'mistral-medium-latest', label: 'Mistral Medium' },
+      { value: 'mistral-small-latest', label: 'Mistral Small' },
+      { value: 'open-mistral-nemo', label: 'Mistral Nemo (Open)' },
+    ] },
+    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
+    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, required: true, hint: 'Supports {{template}} variables' },
+    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
+    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
+    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
+      { value: 'text', label: 'Text' },
+      { value: 'json', label: 'JSON Object' },
+    ] },
+  ],
+  OPENROUTER: [
+    { key: 'apiKey', label: 'API Key', placeholder: 'sk-or-...', type: 'password', required: true, hint: 'Your OpenRouter API key — models list loads automatically' },
+    { key: 'model', label: 'Model', placeholder: 'openai/gpt-4o-mini', required: true, hint: 'Enter model ID or select after loading models' },
+    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
+    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, required: true, hint: 'Supports {{template}} variables' },
+    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
+    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
+    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
+      { value: 'text', label: 'Text' },
+      { value: 'json', label: 'JSON Object' },
+    ] },
+  ],
 };
 
 const CRON_EXAMPLES = [
@@ -223,11 +288,14 @@ const TELEGRAM_MESSAGE_TEMPLATES = [
   { label: '🔔 Notification', text: '🔔 New message from {{trigger.from.first_name}}:\n\n{{trigger.text}}' },
 ];
 
-export function NodeConfigPanel() {
+export function NodeConfigPanel({ embedded = false }: { embedded?: boolean }) {
   const { selectedNode, updateNodeData, setSelectedNode, nodes } = useEditorStore();
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [testingIntegration, setTestingIntegration] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Fetch integrations for node dropdowns (Telegram, SMTP, HTTP API, Database)
   const { data: integrations = [] } = useQuery<Array<{ id: string; name: string; type: string }>>({
@@ -466,8 +534,9 @@ export function NodeConfigPanel() {
   const isTelegramAction = nodeType === 'TELEGRAM' && !isTrigger;
 
   return (
-    <div className="w-80 border-l bg-card overflow-y-auto shrink-0 animate-in slide-in-from-right duration-200">
-      {/* Header */}
+    <div className={embedded ? '' : 'w-80 border-l bg-card overflow-y-auto shrink-0 animate-in slide-in-from-right duration-200'}>
+      {/* Header — hidden when embedded in NDV */}
+      {!embedded && (
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
           <Settings2 className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -482,6 +551,7 @@ export function NodeConfigPanel() {
           <X className="h-4 w-4" />
         </Button>
       </div>
+      )}
 
       <div className="p-4 space-y-4">
         {/* General section */}
@@ -593,12 +663,80 @@ export function NodeConfigPanel() {
 
                 return (
                   <div key={field.key}>
-                    <label className="text-xs font-medium">
-                      {field.label}
-                      {field.required && <span className="text-destructive ml-0.5">*</span>}
-                    </label>
+                    <div className="flex items-center gap-1">
+                      <label className="text-xs font-medium">
+                        {field.label}
+                        {field.required && <span className="text-destructive ml-0.5">*</span>}
+                      </label>
+                      {/* Help tooltips for specific fields */}
+                      {field.key === 'cronExpression' && (
+                        <HelpTooltip
+                          content="Use crontab.guru to create and validate cron expressions"
+                          linkUrl="https://crontab.guru"
+                          linkText="Open crontab.guru"
+                        />
+                      )}
+                      {field.key === 'body' && field.inputType === 'textarea' && nodeType === 'HTTP_REQUEST' && (
+                        <HelpTooltip content={'Enter valid JSON. Example: {"key": "value"}'} />
+                      )}
+                      {field.key === 'headers' && (
+                        <HelpTooltip content={'Enter valid JSON. Example: {"Authorization": "Bearer token"}'} />
+                      )}
+                      {field.key === 'expression' && (
+                        <HelpTooltip
+                          content="JSONata expression for data transformation"
+                          linkUrl="https://docs.jsonata.org"
+                          linkText="JSONata docs"
+                        />
+                      )}
+                    </div>
 
-                    {field.inputType === 'select' && field.options ? (
+                    {field.key === 'integrationId' && field.inputType === 'select' && field.options ? (
+                      <div className="mt-1 space-y-1.5">
+                        <Select
+                          className={cn('h-8 text-sm', hasError && 'border-destructive/50')}
+                          value={value || field.options[0]?.value || ''}
+                          options={[
+                            ...field.options,
+                            { value: '__add_new__', label: '➕ Add New Integration...' },
+                          ]}
+                          disabled={field.readOnly}
+                          onChange={(e) => {
+                            if (e.target.value === '__add_new__') {
+                              setWizardOpen(true);
+                              return;
+                            }
+                            handleChange(field.key, e.target.value);
+                          }}
+                        />
+                        {value && value !== '__add_new__' && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setTestingIntegration(true);
+                              setTestResult(null);
+                              const result = await testIntegration(value);
+                              setTestResult(result);
+                              setTestingIntegration(false);
+                            }}
+                            disabled={testingIntegration}
+                            className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                          >
+                            {testingIntegration ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Zap className="h-3 w-3" />
+                            )}
+                            Test Connection
+                          </button>
+                        )}
+                        {testResult && (
+                          <p className={cn('text-[10px]', testResult.success ? 'text-emerald-500' : 'text-red-500')}>
+                            {testResult.success ? '✓ ' : '✗ '}{testResult.message}
+                          </p>
+                        )}
+                      </div>
+                    ) : field.inputType === 'select' && field.options ? (
                       <Select
                         className={cn('mt-1 h-8 text-sm', hasError && 'border-destructive/50')}
                         value={value || field.options[0]?.value || ''}
@@ -759,6 +897,12 @@ export function NodeConfigPanel() {
           />
         </div>
       </div>
+
+      {/* Integration Wizard Dialog (opened from + Add New) */}
+      <IntegrationWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+      />
     </div>
   );
 }

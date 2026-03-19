@@ -5,7 +5,9 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { IntegrationsService } from './integrations.service';
@@ -17,12 +19,16 @@ import {
   VerifyHTTPApiDto,
   VerifyDatabaseDto,
 } from './integrations.dto';
+import { OpenRouterAction } from '../engine/actions/openrouter.action';
 
 @ApiTags('Integrations')
 @ApiBearerAuth()
 @Controller('integrations')
 export class IntegrationsController {
-  constructor(private readonly integrationsService: IntegrationsService) {}
+  constructor(
+    private readonly integrationsService: IntegrationsService,
+    private readonly openRouterAction: OpenRouterAction,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List user integrations' })
@@ -70,5 +76,18 @@ export class IntegrationsController {
   @ApiOperation({ summary: 'Verify database connection' })
   verifyDatabase(@Body() dto: VerifyDatabaseDto) {
     return this.integrationsService.verifyDatabase(dto);
+  }
+
+  @Post(':id/test')
+  @ApiOperation({ summary: 'Test saved integration connection' })
+  testIntegration(@Request() req: any, @Param('id') id: string) {
+    return this.integrationsService.testIntegration(id, req.user.sub);
+  }
+
+  @Get('openrouter/models')
+  @ApiOperation({ summary: 'Get available OpenRouter models' })
+  async getOpenRouterModels(@Query('apiKey') apiKey: string) {
+    if (!apiKey) throw new BadRequestException('apiKey query parameter is required');
+    return this.openRouterAction.getModels(apiKey);
   }
 }

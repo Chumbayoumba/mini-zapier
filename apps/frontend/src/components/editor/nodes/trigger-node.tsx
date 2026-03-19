@@ -9,6 +9,8 @@ import {
   Send,
   Zap,
 } from 'lucide-react';
+import { useExecutionStore } from '@/stores/execution-store';
+import { NodeExecutionBadge, getExecClassName } from '@/components/editor/node-execution-badge';
 
 const TRIGGER_ICONS: Record<string, any> = {
   WEBHOOK: Webhook,
@@ -24,22 +26,29 @@ const TRIGGER_COLORS: Record<string, string> = {
   TELEGRAM: '#0EA5E9',
 };
 
-function TriggerNode({ data, selected }: NodeProps) {
+function TriggerNode({ data, id, selected }: NodeProps) {
   const triggerType = (data?.type as string) || 'WEBHOOK';
   const color = TRIGGER_COLORS[triggerType] || '#8B5CF6';
   const Icon = TRIGGER_ICONS[triggerType] || Zap;
   const label = (data?.label as string) || triggerType;
+  const isDisabled = !!data?.disabled;
+
+  const execInfo = useExecutionStore((s) => s.nodeStates[id]);
+  const execState = execInfo?.state || 'idle';
+  const execClass = getExecClassName(execState);
 
   return (
     <div
       className={`relative min-w-[160px] rounded-xl border-2 bg-white dark:bg-gray-900 shadow-lg transition-shadow ${
         selected ? 'ring-2 ring-offset-2' : ''
-      }`}
+      } ${execClass} ${isDisabled ? 'opacity-40 grayscale-[50%]' : ''}`}
       style={{
-        borderColor: color,
+        borderColor: execState === 'success' ? '#22C55E' : execState === 'error' ? '#EF4444' : color,
         ...(selected ? { ringColor: color } : {}),
       }}
     >
+      <NodeExecutionBadge state={execState} duration={execInfo?.duration} error={execInfo?.error} />
+
       {/* Header */}
       <div
         className="flex items-center gap-2 rounded-t-[10px] px-3 py-2 text-white"

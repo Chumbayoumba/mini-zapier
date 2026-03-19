@@ -1,94 +1,104 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { StatsCards } from '@/components/dashboard/stats-cards';
-import { ExecutionBarChart, WorkflowStatusChart } from '@/components/dashboard/workflow-status-chart';
 import { ExecutionLineChart } from '@/components/dashboard/execution-line-chart';
 import { RecentExecutions } from '@/components/dashboard/recent-executions';
-import { useDashboardStats, useRecentExecutions, useChartData } from '@/hooks/use-executions';
-import { useDashboardLive } from '@/hooks/use-websocket';
-import { Plus, ArrowRight, Zap } from 'lucide-react';
-import { toast } from 'sonner';
-import type { WorkflowExecution } from '@/types';
+import { WorkflowStatusChart } from '@/components/dashboard/workflow-status-chart';
+import { ExecutionTimeline } from '@/components/dashboard/execution-timeline';
+import { Plus, Key, Workflow, ArrowRight, Loader2 } from 'lucide-react';
+import Link from 'next/link';
 
 export default function DashboardPage() {
-  const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
-  const { data: recentData, isLoading: recentLoading, error: recentError } = useRecentExecutions();
   const [chartPeriod, setChartPeriod] = useState<'7d' | '30d'>('7d');
-  const { data: chartData, isLoading: chartLoading } = useChartData(chartPeriod);
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const [statsRes, chartRes] = await Promise.all([
+        api.get('/executions/stats'),
+        api.get('/executions/chart'),
+      ]);
+      return { stats: statsRes.data, chart: chartRes.data };
+    },
+  });
 
-  useDashboardLive();
-
-  useEffect(() => {
-    if (statsError) toast.error('Failed to load dashboard stats');
-    if (recentError) toast.error('Failed to load recent executions');
-  }, [statsError, recentError]);
-
-  const recentExecutions: WorkflowExecution[] = recentData?.executions || [];
-
-  const statusDistribution = stats ? [
-    { name: 'Completed', count: stats.completed || 0 },
-    { name: 'Failed', count: stats.failed || 0 },
-    { name: 'Running', count: stats.running || 0 },
-  ].filter(d => d.count > 0) : [];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Monitor your automations at a glance</p>
+          <p className="text-sm text-muted-foreground mt-1">Overview of your automation platform</p>
         </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Link href="/workflows/new">
-          <Button className="gap-2 shadow-md shadow-primary/20">
-            <Plus className="h-4 w-4" />
-            Create Workflow
-          </Button>
+          <Card className="hover:shadow-md hover:border-primary/20 transition-all cursor-pointer group">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 flex items-center justify-center group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/25 transition-colors">
+                <Plus className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">New Workflow</p>
+                <p className="text-xs text-muted-foreground">Create an automation</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/credentials">
+          <Card className="hover:shadow-md hover:border-primary/20 transition-all cursor-pointer group">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center group-hover:bg-emerald-200 dark:group-hover:bg-emerald-500/25 transition-colors">
+                <Key className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">Add Credential</p>
+                <p className="text-xs text-muted-foreground">Connect a service</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/workflows">
+          <Card className="hover:shadow-md hover:border-primary/20 transition-all cursor-pointer group">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center group-hover:bg-violet-200 dark:group-hover:bg-violet-500/25 transition-colors">
+                <Workflow className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">My Workflows</p>
+                <p className="text-xs text-muted-foreground">View all workflows</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </CardContent>
+          </Card>
         </Link>
       </div>
 
-      {/* Stats Cards */}
-      <StatsCards stats={stats} />
+      <StatsCards stats={stats?.stats} />
 
-      {/* Quick Action */}
-      <Card className="bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 border-0 text-white">
-        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm">
-              <Zap className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold">Ready to automate?</p>
-              <p className="text-sm text-white/70">Create your first workflow or explore templates</p>
-            </div>
-          </div>
-          <Link href="/workflows/new">
-            <Button variant="secondary" className="gap-1.5 bg-white/15 backdrop-blur-sm border-white/20 text-white hover:bg-white/25">
-              Get Started <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
-
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ExecutionBarChart data={chartData} />
-        <WorkflowStatusChart data={statusDistribution} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ExecutionLineChart data={stats?.chart} period={chartPeriod} onPeriodChange={setChartPeriod} />
+        <WorkflowStatusChart />
       </div>
 
-      {/* Line Chart + Recent Executions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ExecutionLineChart
-          data={chartData}
-          period={chartPeriod}
-          onPeriodChange={setChartPeriod}
-          isLoading={chartLoading}
-        />
-        <RecentExecutions executions={recentExecutions} />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <RecentExecutions />
+        <ExecutionTimeline />
       </div>
     </div>
   );

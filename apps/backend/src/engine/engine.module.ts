@@ -19,6 +19,11 @@ import { WaitAction } from './actions/wait.action';
 import { NoopAction } from './actions/noop.action';
 import { ManualTriggerAction } from './actions/manual-trigger.action';
 import { LoopAction } from './actions/loop.action';
+import { MergeAction } from './actions/merge.action';
+import { OpenAiAction } from './actions/openai.action';
+import { AnthropicAction } from './actions/anthropic.action';
+import { MistralAction } from './actions/mistral.action';
+import { OpenRouterAction } from './actions/openrouter.action';
 
 @Module({
   imports: [
@@ -44,8 +49,13 @@ import { LoopAction } from './actions/loop.action';
     NoopAction,
     ManualTriggerAction,
     LoopAction,
+    MergeAction,
+    OpenAiAction,
+    AnthropicAction,
+    MistralAction,
+    OpenRouterAction,
   ],
-  exports: [EngineService, ActionRegistry, CredentialService],
+  exports: [EngineService, ActionRegistry, CredentialService, OpenRouterAction],
 })
 export class EngineModule implements OnModuleInit {
   constructor(
@@ -64,6 +74,11 @@ export class EngineModule implements OnModuleInit {
     private readonly noopAction: NoopAction,
     private readonly manualTriggerAction: ManualTriggerAction,
     private readonly loopAction: LoopAction,
+    private readonly mergeAction: MergeAction,
+    private readonly openAiAction: OpenAiAction,
+    private readonly anthropicAction: AnthropicAction,
+    private readonly mistralAction: MistralAction,
+    private readonly openRouterAction: OpenRouterAction,
   ) {}
 
   onModuleInit() {
@@ -82,6 +97,11 @@ export class EngineModule implements OnModuleInit {
       this.noopAction,
       this.manualTriggerAction,
       this.loopAction,
+      this.mergeAction,
+      this.openAiAction,
+      this.anthropicAction,
+      this.mistralAction,
+      this.openRouterAction,
     ].forEach((handler) => this.registry.register(handler));
   }
 }

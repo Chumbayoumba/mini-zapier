@@ -9,6 +9,8 @@ import {
   Database,
   Shuffle,
 } from 'lucide-react';
+import { useExecutionStore } from '@/stores/execution-store';
+import { NodeExecutionBadge, getExecClassName } from '@/components/editor/node-execution-badge';
 
 const ACTION_ICONS: Record<string, any> = {
   HTTP_REQUEST: Globe,
@@ -26,22 +28,29 @@ const ACTION_COLORS: Record<string, string> = {
   TRANSFORM: '#6366F1',
 };
 
-function ActionNode({ data, selected }: NodeProps) {
+function ActionNode({ data, id, selected }: NodeProps) {
   const actionType = (data?.type as string) || 'HTTP_REQUEST';
   const color = ACTION_COLORS[actionType] || '#3B82F6';
   const Icon = ACTION_ICONS[actionType] || Globe;
   const label = (data?.label as string) || actionType;
+  const isDisabled = !!data?.disabled;
+
+  const execInfo = useExecutionStore((s) => s.nodeStates[id]);
+  const execState = execInfo?.state || 'idle';
+  const execClass = getExecClassName(execState);
 
   return (
     <div
       className={`relative min-w-[160px] rounded-xl border-2 bg-white dark:bg-gray-900 shadow-lg transition-shadow ${
         selected ? 'ring-2 ring-offset-2' : ''
-      }`}
+      } ${execClass} ${isDisabled ? 'opacity-40 grayscale-[50%]' : ''}`}
       style={{
-        borderColor: color,
+        borderColor: execState === 'success' ? '#22C55E' : execState === 'error' ? '#EF4444' : color,
         ...(selected ? { ringColor: color } : {}),
       }}
     >
+      <NodeExecutionBadge state={execState} duration={execInfo?.duration} error={execInfo?.error} />
+
       {/* Input handle */}
       <Handle
         type="target"

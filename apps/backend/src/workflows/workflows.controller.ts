@@ -103,6 +103,19 @@ export class WorkflowsController {
     return { executionId };
   }
 
+  @Post(':id/test-node')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Test a single node with input data' })
+  async testNode(
+    @Param('id') id: string,
+    @CurrentUser('sub') userId: string,
+    @Body() body: { nodeId: string; inputData?: any },
+  ) {
+    const workflow = await this.workflowsService.findById(id, userId);
+    return this.engineService.testSingleNode(workflow, body.nodeId, body.inputData);
+  }
+
   @Get(':id/versions')
   @ApiOperation({ summary: 'Get workflow versions' })
   @ApiResponse({ status: 200, description: 'List of workflow versions' })

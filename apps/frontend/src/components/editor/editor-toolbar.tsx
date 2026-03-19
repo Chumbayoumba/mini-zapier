@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import {
   ArrowLeft, Undo2, Redo2, Save, Play, Maximize,
   Loader2, Power, PowerOff, ZoomIn, ZoomOut,
+  LayoutGrid, StickyNote, Plus, Download, Upload, Map,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/error-handler';
@@ -21,6 +22,11 @@ interface EditorToolbarProps {
   onSave: () => void;
   onRun: () => void;
   isSaving?: boolean;
+  isRunning?: boolean;
+  onAutoLayout?: () => void;
+  onAddStickyNote?: () => void;
+  onOpenNodePicker?: () => void;
+  onToggleMinimap?: () => void;
 }
 
 export function EditorToolbar({
@@ -30,6 +36,11 @@ export function EditorToolbar({
   onSave,
   onRun,
   isSaving,
+  isRunning,
+  onAutoLayout,
+  onAddStickyNote,
+  onOpenNodePicker,
+  onToggleMinimap,
 }: EditorToolbarProps) {
   const router = useRouter();
   const { fitView, zoomIn, zoomOut } = useReactFlow();
@@ -53,6 +64,44 @@ export function EditorToolbar({
   };
 
   const isToggling = activateWorkflow.isPending || deactivateWorkflow.isPending;
+
+  const handleExport = () => {
+    const { nodes, edges } = useEditorStore.getState();
+    const data = JSON.stringify({ nodes, edges }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(workflowName || 'workflow').replace(/\s+/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Workflow exported');
+  };
+
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data.nodes && Array.isArray(data.nodes)) {
+          useEditorStore.getState().setNodes(data.nodes);
+          useEditorStore.getState().setEdges(data.edges || []);
+          toast.success('Workflow imported');
+          setTimeout(() => fitView({ padding: 0.2 }), 100);
+        } else {
+          toast.error('Invalid workflow file');
+        }
+      } catch {
+        toast.error('Failed to parse workflow file');
+      }
+    };
+    input.click();
+  };
 
   return (
     <div className="flex items-center gap-2 border-b px-3 py-2 bg-card">
@@ -88,6 +137,28 @@ export function EditorToolbar({
       </Button>
       <div className="w-px h-5 bg-border" />
 
+      <Button size="sm" variant="ghost" onClick={onAutoLayout} title="Tidy Up (Auto Layout)">
+        <LayoutGrid className="h-3.5 w-3.5" />
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onAddStickyNote} title="Add Sticky Note">
+        <StickyNote className="h-3.5 w-3.5" />
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onOpenNodePicker} title="Add Node (Ctrl+K)">
+        <Plus className="h-3.5 w-3.5" />
+      </Button>
+      <div className="w-px h-5 bg-border" />
+
+      <Button size="sm" variant="ghost" onClick={handleExport} title="Export JSON">
+        <Download className="h-3.5 w-3.5" />
+      </Button>
+      <Button size="sm" variant="ghost" onClick={handleImport} title="Import JSON">
+        <Upload className="h-3.5 w-3.5" />
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onToggleMinimap} title="Toggle Minimap">
+        <Map className="h-3.5 w-3.5" />
+      </Button>
+      <div className="w-px h-5 bg-border" />
+
       <Button
         size="sm"
         variant={workflowActive ? 'destructive' : 'outline'}
@@ -104,9 +175,9 @@ export function EditorToolbar({
         {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
         Save
       </Button>
-      <Button size="sm" className="gap-1.5 shadow-sm shadow-primary/20" onClick={onRun}>
-        <Play className="h-3.5 w-3.5" />
-        Run
+      <Button size="sm" className="gap-1.5 shadow-sm shadow-primary/20" onClick={onRun} disabled={isRunning}>
+        {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+        {isRunning ? 'Running...' : 'Run'}
       </Button>
     </div>
   );

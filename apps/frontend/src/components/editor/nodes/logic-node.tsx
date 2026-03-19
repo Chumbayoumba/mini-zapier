@@ -14,6 +14,8 @@ import {
   ArrowRight,
   Play,
 } from 'lucide-react';
+import { useExecutionStore } from '@/stores/execution-store';
+import { NodeExecutionBadge, getExecClassName } from '@/components/editor/node-execution-badge';
 
 const LOGIC_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   IF: GitBranch,
@@ -68,11 +70,16 @@ const NODE_INPUTS: Record<string, HandleDef[]> = {
   DEFAULT: [{ id: 'input-0', label: '' }],
 };
 
-function LogicNode({ data, selected }: NodeProps) {
+function LogicNode({ data, id, selected }: NodeProps) {
   const nodeType = (data?.type as string) || 'NOOP';
   const color = LOGIC_COLORS[nodeType] || '#9CA3AF';
   const Icon = LOGIC_ICONS[nodeType] || ArrowRight;
   const label = (data?.label as string) || nodeType;
+  const isDisabled = !!data?.disabled;
+
+  const execInfo = useExecutionStore((s) => s.nodeStates[id]);
+  const execState = execInfo?.state || 'idle';
+  const execClass = getExecClassName(execState);
 
   // Support dynamic Switch outputs from config
   let outputs = NODE_OUTPUTS[nodeType] || NODE_OUTPUTS.DEFAULT;
@@ -92,12 +99,14 @@ function LogicNode({ data, selected }: NodeProps) {
     <div
       className={`relative min-w-[180px] rounded-xl border-2 bg-white dark:bg-gray-900 shadow-lg transition-shadow ${
         selected ? 'ring-2 ring-offset-2' : ''
-      }`}
+      } ${execClass} ${isDisabled ? 'opacity-40 grayscale-[50%]' : ''}`}
       style={{
-        borderColor: color,
+        borderColor: execState === 'success' ? '#22C55E' : execState === 'error' ? '#EF4444' : color,
         ...(selected ? { ringColor: color } : {}),
       }}
     >
+      <NodeExecutionBadge state={execState} duration={execInfo?.duration} error={execInfo?.error} />
+
       {/* Input handles */}
       {inputs.map((input, idx) => (
         <Handle

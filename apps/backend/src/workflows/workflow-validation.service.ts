@@ -93,6 +93,12 @@ export class WorkflowValidationService {
         case 'TRANSFORM':
           this.validateTransform(node.id, nodeLabel, config, errors);
           break;
+        case 'OPENAI':
+        case 'ANTHROPIC':
+        case 'MISTRAL':
+        case 'OPENROUTER':
+          this.validateAiNode(node.id, nodeLabel, nodeType, config, errors);
+          break;
       }
     }
 
@@ -229,6 +235,18 @@ export class WorkflowValidationService {
   private validateTransform(nodeId: string, label: string, config: any, errors: ValidationError[]) {
     if (!config.expression) {
       errors.push({ nodeId, field: 'expression', message: `"${label}": JSONata expression is required` });
+    }
+  }
+
+  private validateAiNode(nodeId: string, label: string, nodeType: string, config: any, errors: ValidationError[]) {
+    if (!config.apiKey) {
+      errors.push({ nodeId, field: 'apiKey', message: `"${label}": API key is required` });
+    }
+    if (!config.userPrompt) {
+      errors.push({ nodeId, field: 'userPrompt', message: `"${label}": User prompt is required` });
+    }
+    if (nodeType === 'OPENROUTER' && !config.model) {
+      errors.push({ nodeId, field: 'model', message: `"${label}": Model must be selected` });
     }
   }
 }

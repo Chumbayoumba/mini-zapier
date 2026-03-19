@@ -216,6 +216,48 @@ export class IntegrationsService {
     }
   }
 
+  async testIntegration(id: string, userId: string): Promise<{ ok: boolean; message: string }> {
+    const integration = await this.prisma.integration.findUnique({ where: { id } });
+    if (!integration) throw new NotFoundException('Integration not found');
+    if (integration.userId !== userId) throw new ForbiddenException();
+
+    const config = integration.config as Record<string, any>;
+
+    try {
+      switch (integration.type) {
+        case 'SMTP':
+          return await this.verifySMTP({
+            host: config.host,
+            port: config.port || 587,
+            user: config.user,
+            password: config.password,
+            secure: config.secure,
+          });
+        case 'TELEGRAM':
+          const result = await this.verifyTelegramBot(config.botToken);
+          return { ok: result.ok, message: result.ok ? `Bot @${result.botUsername} is active` : ((result as any).error || 'Telegram test failed') };
+        case 'HTTP_API':
+          const httpResult = await this.verifyHTTPApi({
+            baseUrl: config.baseUrl,
+            headers: config.headers,
+          });
+          return { ok: httpResult.ok, message: httpResult.message };
+        case 'DATABASE':
+          if (config.connectionString) {
+            return await this.verifyDatabase({ connectionString: config.connectionString });
+          }
+          return { ok: true, message: 'Database configuration saved' };
+        case 'WEBHOOK':
+          return { ok: true, message: 'Webhook is configured' };
+        default:
+          return { ok: true, message: 'Configuration saved' };
+      }
+    } catch (error: any) {
+      this.logger.error(`Integration test failed for ${id}`, error);
+      return { ok: false, message: error.message || 'Connection test failed' };
+    }
+  }
+
   private sanitizeConfig(config: Record<string, any>): Record<string, any> {
     if (!config) return {};
     const sanitized = { ...config };

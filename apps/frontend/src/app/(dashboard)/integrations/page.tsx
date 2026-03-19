@@ -5,6 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/error-handler';
+import { testIntegration } from '@/lib/integration-test';
+import { IntegrationWizard } from '@/components/integrations/integration-wizard';
+import { Button } from '@/components/ui/button';
 import {
   Send,
   Plus,
@@ -19,6 +22,9 @@ import {
   Database,
   Webhook,
   ArrowLeft,
+  Pencil,
+  Zap,
+  AlertCircle,
 } from 'lucide-react';
 
 interface Integration {
@@ -101,6 +107,12 @@ export default function IntegrationsPage() {
   const [selectedType, setSelectedType] = useState<IntegrationType | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<any>(null);
+
+  // Wizard state
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [editingIntegration, setEditingIntegration] = useState<Integration | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
 
   // Form fields
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -249,6 +261,35 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleTestIntegration = async (id: string) => {
+    setTestingId(id);
+    try {
+      const result = await testIntegration(id);
+      setTestResults((prev) => ({ ...prev, [id]: result }));
+      if (result.success) {
+        toast.success('Connection test passed');
+      } else {
+        toast.error(result.message || 'Connection test failed');
+      }
+    } catch {
+      setTestResults((prev) => ({ ...prev, [id]: { success: false, message: 'Test failed' } }));
+      toast.error('Connection test failed');
+    } finally {
+      setTestingId(null);
+    }
+  };
+
+  const openWizard = (integration?: Integration) => {
+    setEditingIntegration(integration || null);
+    setWizardOpen(true);
+  };
+
+  const getConnectionStatus = (integration: Integration): 'connected' | 'error' | 'unknown' => {
+    const result = testResults[integration.id];
+    if (result) return result.success ? 'connected' : 'error';
+    return integration.isActive ? 'connected' : 'unknown';
+  };
+
   // ---- Type-specific forms ----
   const renderForm = () => {
     const meta = selectedType ? getIntegrationMeta(selectedType) : null;
@@ -376,6 +417,13 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Integration Wizard Dialog */}
+      <IntegrationWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        editIntegration={editingIntegration}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -384,15 +432,24 @@ export default function IntegrationsPage() {
             Connect external services to use in your workflows
           </p>
         </div>
-        {step === 'list' && (
-          <button
-            onClick={() => setStep('select')}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+        <div className="flex gap-2">
+          {step !== 'list' && (
+            <button
+              onClick={resetForm}
+              className="inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium hover:bg-accent transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to List
+            </button>
+          )}
+          <Button
+            onClick={() => openWizard()}
+            className="gap-2"
           >
             <Plus className="h-4 w-4" />
             Add Integration
-          </button>
-        )}
+          </Button>
+        </div>
       </div>
 
       {/* Type selector */}
@@ -445,7 +502,7 @@ export default function IntegrationsPage() {
             Connect Telegram, SMTP, Webhook, HTTP API, or Database to power your workflows
           </p>
           <button
-            onClick={() => setStep('select')}
+            onClick={() => openWizard()}
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
@@ -480,28 +537,74 @@ export default function IntegrationsPage() {
                       <p className="text-xs text-muted-foreground">{meta.label}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => deleteMutation.mutate(integration.id)}
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openWizard(integration)}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                      title="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate(integration.id)}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-3 flex items-center gap-2 text-xs">
-                  {integration.isActive ? (
-                    <>
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400">Connected</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-3.5 w-3.5 text-red-500" />
-                      <span className="text-red-600 dark:text-red-400">Inactive</span>
-                    </>
-                  )}
+                  {(() => {
+                    const status = getConnectionStatus(integration);
+                    if (status === 'connected') return (
+                      <>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle className="h-3 w-3" />
+                          Connected
+                        </span>
+                      </>
+                    );
+                    if (status === 'error') return (
+                      <>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-red-600 dark:text-red-400">
+                          <XCircle className="h-3 w-3" />
+                          Error
+                        </span>
+                      </>
+                    );
+                    return (
+                      <>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+                          <AlertCircle className="h-3 w-3" />
+                          Unknown
+                        </span>
+                      </>
+                    );
+                  })()}
                   <span className="text-muted-foreground ml-auto">
                     {new Date(integration.createdAt).toLocaleDateString()}
                   </span>
+                </div>
+                {/* Test button */}
+                <div className="mt-3 pt-3 border-t">
+                  <button
+                    onClick={() => handleTestIntegration(integration.id)}
+                    disabled={testingId === integration.id}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    {testingId === integration.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Zap className="h-3.5 w-3.5" />
+                    )}
+                    Test Connection
+                  </button>
+                  {testResults[integration.id] && (
+                    <p className={`text-[10px] mt-1 ${testResults[integration.id].success ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {testResults[integration.id].message}
+                    </p>
+                  )}
                 </div>
               </div>
             );

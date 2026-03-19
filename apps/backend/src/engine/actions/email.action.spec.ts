@@ -46,7 +46,7 @@ describe('EmailAction', () => {
 
     it('should reject invalid email address', async () => {
       await expect(action.execute({ to: 'not-an-email', subject: 'Hi', body: 'Hello' }))
-        .rejects.toThrow(/Invalid email address/);
+        .rejects.toThrow(/Invalid.*email address/);
     });
 
     it('should reject invalid CC email', async () => {

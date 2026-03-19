@@ -611,4 +611,42 @@ export class EngineService {
 
     return result;
   }
+
+  /**
+   * Test a single node in isolation with provided input data.
+   */
+  async testSingleNode(workflow: any, nodeId: string, inputData?: any): Promise<any> {
+    const definition = workflow.definition as any;
+    const rawNodes = this.normalizeNodes(definition?.nodes || []);
+    const node = rawNodes.find((n: any) => n.id === nodeId);
+    if (!node) throw new Error(`Node ${nodeId} not found in workflow`);
+
+    const nodeType = node.data?.type as string;
+    const config = { ...(node.data?.config || {}) };
+
+    // Resolve template variables in config using input data
+    if (inputData) {
+      const ctx: TemplateContext = { trigger: inputData, steps: {}, env: {} };
+      for (const [key, val] of Object.entries(config)) {
+        if (typeof val === 'string' && val.includes('{{')) {
+          config[key] = TemplateEngine.resolve(val, ctx);
+        }
+      }
+    }
+
+    // Merge input data into config for action execution
+    const execConfig = { ...config, ...(inputData || {}) };
+
+    if (!this.actionRegistry.has(nodeType)) {
+      return { output: inputData || {}, note: `Node type ${nodeType} passed through (trigger/unknown)` };
+    }
+
+    try {
+      const handler = this.actionRegistry.get(nodeType);
+      const result = await handler.execute(execConfig);
+      return result;
+    } catch (error: any) {
+      throw new Error(`Node "${node.data?.label || nodeId}" failed: ${error.message}`);
+    }
+  }
 }

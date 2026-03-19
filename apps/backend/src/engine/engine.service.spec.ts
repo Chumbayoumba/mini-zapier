@@ -398,8 +398,11 @@ describe('EngineService', () => {
       const result = await service.executeWorkflow('wf-1');
 
       expect(result).toBe('exec-1');
+      // Engine now auto-generates default triggerData for manual runs
       expect(prisma.workflowExecution.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ triggerData: undefined }),
+        data: expect.objectContaining({
+          triggerData: expect.objectContaining({ method: 'POST' }),
+        }),
       });
     });
   });
