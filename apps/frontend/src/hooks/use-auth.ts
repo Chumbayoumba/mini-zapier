@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export function useLogin() {
   const router = useRouter();
@@ -17,11 +18,8 @@ export function useLogin() {
     },
     onSuccess: (data) => {
       setAuth(data.user, data.accessToken, data.refreshToken);
-      toast.success('Logged in successfully');
+      toast.success('Signed in successfully');
       router.push('/dashboard');
-    },
-    onError: () => {
-      toast.error('Invalid credentials');
     },
   });
 }
@@ -37,12 +35,11 @@ export function useRegister() {
     },
     onSuccess: (data) => {
       setAuth(data.user, data.accessToken, data.refreshToken);
-      toast.success('Account created');
+      toast.success('Account created successfully');
       router.push('/dashboard');
     },
     onError: (error: unknown) => {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      toast.error(axiosError.response?.data?.message || 'Registration failed');
+      toast.error(getErrorMessage(error));
     },
   });
 }

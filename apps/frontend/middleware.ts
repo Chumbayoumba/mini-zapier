@@ -24,7 +24,8 @@ export async function middleware(request: NextRequest) {
     request.headers.get('authorization')?.replace('Bearer ', '');
 
   if (!token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const loginUrl = new URL('/login', request.url);
+    return NextResponse.redirect(loginUrl);
   }
 
   try {
@@ -37,7 +38,9 @@ export async function middleware(request: NextRequest) {
     await jwtVerify(token, secret);
     return NextResponse.next();
   } catch {
-    return NextResponse.redirect(new URL('/login', request.url));
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('reason', 'session_expired');
+    return NextResponse.redirect(loginUrl);
   }
 }
 

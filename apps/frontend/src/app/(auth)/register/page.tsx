@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,25 +9,35 @@ import { useRegister } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Zap, Loader2 } from 'lucide-react';
+import { Zap, Loader2, AlertCircle } from 'lucide-react';
+import { getErrorMessage } from '@/lib/error-handler';
 
 const schema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(6),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 type RegisterForm = z.infer<typeof schema>;
 
 export default function RegisterPage() {
   const reg = useRegister();
+  const [serverError, setServerError] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(schema),
   });
 
+  const onSubmit = (data: RegisterForm) => {
+    setServerError(null);
+    reg.mutate(data, {
+      onError: (error: unknown) => {
+        setServerError(getErrorMessage(error));
+      },
+    });
+  };
+
   return (
     <div>
-      {/* Brand mark (visible on mobile where sidebar is hidden) */}
       <div className="flex items-center justify-center gap-2.5 mb-8 lg:hidden">
         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-500/25">
           <Zap className="h-5 w-5 text-white" />
@@ -40,20 +51,27 @@ export default function RegisterPage() {
           <CardDescription className="text-sm">Start automating in under a minute</CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-8 pt-4">
-          <form onSubmit={handleSubmit((data) => reg.mutate(data))} className="space-y-4">
+          {serverError && (
+            <div className="flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/20 p-3 mb-4">
+              <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+              <p className="text-sm text-destructive">{serverError}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Full Name</label>
-              <Input {...register('name')} placeholder="John Doe" className="h-10" />
+              <Input {...register('name')} placeholder="John Doe" className="h-10" onChange={() => setServerError(null)} />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message as string}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Email</label>
-              <Input {...register('email')} type="email" placeholder="you@example.com" className="h-10" />
+              <Input {...register('email')} type="email" placeholder="you@example.com" className="h-10" onChange={() => setServerError(null)} />
               {errors.email && <p className="text-xs text-destructive">{errors.email.message as string}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Password</label>
-              <Input {...register('password')} type="password" placeholder="••••••••" className="h-10" />
+              <Input {...register('password')} type="password" placeholder="••••••••" className="h-10" onChange={() => setServerError(null)} />
               {errors.password && <p className="text-xs text-destructive">{errors.password.message as string}</p>}
             </div>
             <Button type="submit" className="w-full h-10 font-semibold" disabled={reg.isPending}>
