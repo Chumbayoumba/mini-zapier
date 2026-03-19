@@ -21,7 +21,20 @@ export enum ActionType {
   TRANSFORM = 'TRANSFORM',
 }
 
-export type NodeType = TriggerType | ActionType;
+export enum LogicType {
+  IF = 'IF',
+  SWITCH = 'SWITCH',
+  FILTER = 'FILTER',
+  SET = 'SET',
+  CODE = 'CODE',
+  MERGE = 'MERGE',
+  WAIT = 'WAIT',
+  LOOP = 'LOOP',
+  NOOP = 'NOOP',
+  MANUAL_TRIGGER = 'MANUAL_TRIGGER',
+}
+
+export type NodeType = TriggerType | ActionType | LogicType;
 
 export interface WorkflowNodePosition {
   x: number;
@@ -45,6 +58,8 @@ export interface WorkflowEdge {
   id: string;
   source: string;
   target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
   type?: string;
 }
 
