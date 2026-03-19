@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export interface Notification {
   id: string;
@@ -54,6 +56,9 @@ export function useMarkAsRead() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
     },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
+    },
   });
 }
 
@@ -67,6 +72,9 @@ export function useMarkAllAsRead() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
     },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
+    },
   });
 }
 
@@ -79,6 +87,9 @@ export function useDeleteNotification() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

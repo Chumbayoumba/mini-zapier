@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth-store';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 import Link from 'next/link';
 
 const registerSchema = z
@@ -50,8 +51,8 @@ export function RegisterForm() {
       setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
       toast.success('Account created!');
       router.push('/dashboard');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Registration failed');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

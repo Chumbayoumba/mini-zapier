@@ -21,6 +21,9 @@ export function useLogin() {
       toast.success('Signed in successfully');
       router.push('/dashboard');
     },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
+    },
   });
 }
 

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Loader2, X } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export function CreateWorkflowDialog() {
   const router = useRouter();
@@ -28,8 +29,8 @@ export function CreateWorkflowDialog() {
       setName('');
       setDescription('');
       router.push(`/workflows/${res.data.id}/editor`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to create workflow');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

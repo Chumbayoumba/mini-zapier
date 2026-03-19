@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 import type { WorkflowExecution } from '@/types';
 
 const STATUS_BADGE: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
@@ -88,8 +89,8 @@ export default function WorkflowDetailPage() {
       }
       await executeMutation.mutateAsync({ id, data: testTriggerData });
       refetch();
-    } catch {
-      toast.error('Failed to start execution');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -101,8 +102,8 @@ export default function WorkflowDetailPage() {
         await activateMutation.mutateAsync(id);
       }
       refetch();
-    } catch {
-      toast.error('Failed to update workflow status');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -111,8 +112,8 @@ export default function WorkflowDetailPage() {
     try {
       await deleteMutation.mutateAsync(id);
       router.push('/workflows');
-    } catch {
-      toast.error('Failed to delete workflow');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   };
 

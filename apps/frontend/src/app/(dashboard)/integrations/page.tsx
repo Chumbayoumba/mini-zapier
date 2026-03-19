@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 import {
   Send,
   Plus,
@@ -122,7 +123,7 @@ export default function IntegrationsPage() {
       toast.success('Integration added successfully');
       resetForm();
     },
-    onError: () => toast.error('Failed to add integration'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
@@ -133,7 +134,7 @@ export default function IntegrationsPage() {
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
       toast.success('Integration removed');
     },
-    onError: () => toast.error('Failed to remove integration'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error)),
   });
 
   const resetForm = () => {
@@ -187,8 +188,8 @@ export default function IntegrationsPage() {
       } else {
         toast.error(data?.message || 'Verification failed');
       }
-    } catch {
-      toast.error('Verification failed');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     } finally {
       setIsVerifying(false);
     }

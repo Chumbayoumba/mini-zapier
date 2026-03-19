@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth-store';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 import Link from 'next/link';
 
 const loginSchema = z.object({
@@ -39,8 +40,8 @@ export function LoginForm() {
       setAuth(res.data.user, res.data.accessToken, res.data.refreshToken);
       toast.success('Welcome back!');
       router.push('/dashboard');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Login failed');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

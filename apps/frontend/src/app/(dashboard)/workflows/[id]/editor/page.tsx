@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   ReactFlow,
   MiniMap,
@@ -31,7 +32,10 @@ import ActionNode from '@/components/editor/nodes/action-node';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
 import { MultiSelectToolbar } from '@/components/editor/multi-select-toolbar';
 import { validateConnection, countTriggerNodes } from '@/lib/graph-validation';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
+import { Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 
 const TRIGGER_TYPES = [
@@ -52,7 +56,7 @@ const ACTION_TYPES = [
 function EditorCanvas() {
   const params = useParams();
   const workflowId = params.id as string;
-  const { data: workflow } = useWorkflow(workflowId);
+  const { data: workflow, isLoading, error, refetch } = useWorkflow(workflowId);
   const updateWorkflow = useUpdateWorkflow();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -102,9 +106,9 @@ function EditorCanvas() {
       });
       useEditorStore.getState().markSaved();
       toast.success('Workflow saved');
-    } catch {
+    } catch (err) {
       useEditorStore.setState({ isSaving: false });
-      toast.error('Failed to save');
+      toast.error(getErrorMessage(err));
     }
   }, [workflowId, nodes, edges, updateWorkflow]);
 
@@ -120,8 +124,10 @@ function EditorCanvas() {
       } catch {
         // Invalid JSON definition, use empty
       }
-      setNodes((def.nodes as Node[]) || []);
-      setEdges((def.edges as typeof edges) || []);
+      const parsedNodes = Array.isArray(def.nodes) ? (def.nodes as Node[]) : [];
+      const parsedEdges = Array.isArray(def.edges) ? (def.edges as typeof edges) : [];
+      setNodes(parsedNodes);
+      setEdges(parsedEdges);
       useEditorStore.temporal.getState().clear();
       useEditorStore.getState().markClean();
     }
@@ -170,8 +176,8 @@ function EditorCanvas() {
       toast.success('Workflow execution started');
       setConsoleOpen(true);
       setRunTrigger((prev) => prev + 1);
-    } catch {
-      toast.error('Failed to start execution');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -257,6 +263,37 @@ function EditorCanvas() {
     setSelectedNode(null);
     toast.success('Node deleted');
   }, [setSelectedNode]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading workflow...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    const is404 = (error as any)?.response?.status === 404;
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center space-y-3">
+          <p className="text-lg font-semibold">{is404 ? 'Workflow not found' : 'Failed to load workflow'}</p>
+          <p className="text-sm text-muted-foreground">
+            {is404 ? 'This workflow may have been deleted.' : 'Please try again later.'}
+          </p>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" asChild><Link href="/workflows">Back to Workflows</Link></Button>
+            {!is404 && <Button onClick={() => refetch()}>Try Again</Button>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const hasNodes = Array.isArray(nodes) && nodes.length > 0;
 
   return (
     <div className="flex h-[calc(100vh-8rem)]">
@@ -357,9 +394,18 @@ function EditorCanvas() {
               zoomable
               pannable
               className="!bg-card !border !rounded-lg !shadow-sm"
+              style={{ zIndex: 4 }}
             />
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           </ReactFlow>
+          {!hasNodes && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 5 }}>
+              <div className="text-center space-y-2 pointer-events-auto">
+                <p className="text-lg font-semibold text-muted-foreground">Empty canvas</p>
+                <p className="text-sm text-muted-foreground">Start building your workflow by dragging a trigger from the left panel</p>
+              </div>
+            </div>
+          )}
           <MultiSelectToolbar />
           {contextMenu && (
             <NodeContextMenu

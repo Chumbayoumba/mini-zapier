@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export interface WorkflowFilters {
   page?: number;
@@ -50,6 +51,9 @@ export function useCreateWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       toast.success('Workflow created');
     },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
+    },
   });
 }
 
@@ -64,6 +68,9 @@ export function useUpdateWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['workflow', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       toast.success('Workflow updated');
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -92,6 +99,9 @@ export function useDeleteWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       toast.success('Workflow deleted');
     },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
+    },
   });
 }
 
@@ -106,6 +116,9 @@ export function useActivateWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['workflow', id] });
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       toast.success('Workflow activated');
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -122,6 +135,9 @@ export function useDeactivateWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       toast.success('Workflow paused');
     },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
+    },
   });
 }
 
@@ -135,6 +151,9 @@ export function useExecuteWorkflow() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['executions'] });
       toast.success('Workflow execution started');
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

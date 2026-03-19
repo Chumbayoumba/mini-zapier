@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 import api from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 
@@ -55,8 +56,8 @@ export default function SettingsPage() {
       const updated = res.data.data || res.data;
       setUser(updated);
       toast.success('Profile updated');
-    } catch {
-      toast.error('Failed to update profile');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     } finally {
       setProfileSaving(false);
     }
@@ -71,8 +72,8 @@ export default function SettingsPage() {
       });
       toast.success('Password changed');
       passwordForm.reset();
-    } catch {
-      toast.error('Failed to change password. Check your current password.');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     } finally {
       setPasswordSaving(false);
     }

@@ -12,6 +12,7 @@ import {
   Loader2, Power, PowerOff, ZoomIn, ZoomOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/lib/error-handler';
 
 interface EditorToolbarProps {
   workflowId: string;
@@ -46,8 +47,8 @@ export function EditorToolbar({
       } else {
         await activateWorkflow.mutateAsync(workflowId);
       }
-    } catch {
-      toast.error('Failed to toggle workflow status');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   };
 
