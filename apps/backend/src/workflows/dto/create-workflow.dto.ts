@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, MinLength, MaxLength, IsObject } from 'class-validator';
+import { IsString, IsOptional, MinLength, MaxLength, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { WorkflowDefinitionDto } from './workflow-definition.dto';
 
 export class CreateWorkflowDto {
   @ApiProperty({ example: 'My Workflow' })
@@ -15,7 +17,8 @@ export class CreateWorkflowDto {
   description?: string;
 
   @ApiPropertyOptional()
-  @IsObject()
   @IsOptional()
-  definition?: any;
+  @ValidateNested()
+  @Type(() => WorkflowDefinitionDto)
+  definition?: WorkflowDefinitionDto;
 }

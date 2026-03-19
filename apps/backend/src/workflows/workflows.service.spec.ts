@@ -81,7 +81,7 @@ describe('WorkflowsService', () => {
     });
 
     it('should use provided definition', async () => {
-      const definition = { nodes: [{ id: 'n1' }], edges: [] };
+      const definition = { nodes: [{ id: 'n1' }], edges: [] } as any;
       prisma.workflow.create.mockResolvedValue({ ...mockWorkflow, definition });
 
       await service.create(userId, {
@@ -255,7 +255,7 @@ describe('WorkflowsService', () => {
     it('should create version and increment when definition changes', async () => {
       prisma.workflow.findUnique.mockResolvedValue(mockWorkflow);
       prisma.workflowVersion.create.mockResolvedValue({});
-      const newDef = { nodes: [{ id: 'n1' }], edges: [] };
+      const newDef = { nodes: [{ id: 'n1' }], edges: [] } as any;
       prisma.workflow.update.mockResolvedValue({
         ...mockWorkflow,
         definition: newDef,

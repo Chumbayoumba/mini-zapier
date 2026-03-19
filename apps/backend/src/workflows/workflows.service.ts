@@ -21,7 +21,7 @@ export class WorkflowsService {
         userId,
         name: dto.name,
         description: dto.description,
-        definition: dto.definition || { nodes: [], edges: [] },
+        definition: (dto.definition || { nodes: [], edges: [] }) as any,
       },
     });
     this.logger.log(`Workflow created: ${workflow.id}`);
@@ -115,6 +115,7 @@ export class WorkflowsService {
       where: { id },
       data: {
         ...dto,
+        definition: dto.definition ? (dto.definition as any) : undefined,
         version: dto.definition ? { increment: 1 } : undefined,
       },
     });

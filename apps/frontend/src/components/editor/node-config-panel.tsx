@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { validateNodeField } from '@/lib/node-validation';
 import { X, Settings2, Copy, Check, Zap, MessageSquare, Reply } from 'lucide-react';
 
 interface ConfigField {
@@ -146,6 +147,7 @@ export function NodeConfigPanel() {
   const { selectedNode, updateNodeData, setSelectedNode, nodes } = useEditorStore();
   const [copied, setCopied] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Fetch integrations for node dropdowns (Telegram, SMTP, HTTP API, Database)
   const { data: integrations = [] } = useQuery<Array<{ id: string; name: string; type: string }>>({
@@ -344,6 +346,18 @@ export function NodeConfigPanel() {
     updateNodeData(selectedNode.id, {
       config: { ...config, ...updates },
     });
+
+    // Validate all changed fields
+    const newErrors = { ...fieldErrors };
+    for (const [k, val] of Object.entries(updates)) {
+      const error = validateNodeField(nodeType, k, val);
+      if (error) {
+        newErrors[k] = error;
+      } else {
+        delete newErrors[k];
+      }
+    }
+    setFieldErrors(newErrors);
   };
 
   const insertTemplate = (template: string) => {
@@ -490,6 +504,7 @@ export function NodeConfigPanel() {
                 const value = config[field.key] || '';
                 const hasError = field.required && !value;
                 const isNumberErr = field.type === 'number' && value !== '' && isNaN(Number(value));
+                const validationError = fieldErrors[field.key];
 
                 return (
                   <div key={field.key}>
@@ -511,7 +526,7 @@ export function NodeConfigPanel() {
                         className={cn(
                           'mt-1 text-sm',
                           field.inputType === 'code' && 'font-mono text-xs',
-                          hasError && 'border-destructive/50',
+                          (hasError || validationError) && 'border-destructive/50',
                         )}
                         rows={field.rows || 3}
                         placeholder={field.placeholder}
@@ -520,7 +535,7 @@ export function NodeConfigPanel() {
                       />
                     ) : (
                       <Input
-                        className={cn('mt-1 h-8 text-sm', (hasError || isNumberErr) && 'border-destructive/50')}
+                        className={cn('mt-1 h-8 text-sm', (hasError || isNumberErr || validationError) && 'border-destructive/50')}
                         type={field.type || 'text'}
                         placeholder={field.placeholder}
                         value={value}
@@ -536,6 +551,9 @@ export function NodeConfigPanel() {
                     )}
                     {isNumberErr && (
                       <p className="text-[10px] text-destructive mt-0.5">Must be a number</p>
+                    )}
+                    {validationError && (
+                      <p className="text-xs text-destructive mt-0.5">{validationError}</p>
                     )}
                   </div>
                 );
