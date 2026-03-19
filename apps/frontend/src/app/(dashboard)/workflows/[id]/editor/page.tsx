@@ -29,6 +29,7 @@ import { ExecutionConsole } from '@/components/editor/execution-console';
 import { NodeContextMenu } from '@/components/editor/node-context-menu';
 import TriggerNode from '@/components/editor/nodes/trigger-node';
 import ActionNode from '@/components/editor/nodes/action-node';
+import LogicNode from '@/components/editor/nodes/logic-node';
 import { AnimatedEdge } from '@/components/editor/edges/animated-edge';
 import { MultiSelectToolbar } from '@/components/editor/multi-select-toolbar';
 import { validateConnection, countTriggerNodes } from '@/lib/graph-validation';
@@ -43,6 +44,18 @@ const TRIGGER_TYPES = [
   { type: 'CRON', label: 'Schedule', color: '#F59E0B', icon: '⏰' },
   { type: 'EMAIL', label: 'Email', color: '#EF4444', icon: '📧' },
   { type: 'TELEGRAM', label: 'Telegram', color: '#0EA5E9', icon: '💬' },
+];
+
+const LOGIC_TYPES = [
+  { type: 'IF', label: 'If', color: '#EC4899', icon: '🔀' },
+  { type: 'SWITCH', label: 'Switch', color: '#A855F7', icon: '🔀' },
+  { type: 'FILTER', label: 'Filter', color: '#14B8A6', icon: '🔍' },
+  { type: 'SET', label: 'Set', color: '#F97316', icon: '📝' },
+  { type: 'CODE', label: 'Code', color: '#64748B', icon: '💻' },
+  { type: 'MERGE', label: 'Merge', color: '#06B6D4', icon: '🔗' },
+  { type: 'WAIT', label: 'Wait', color: '#EAB308', icon: '⏳' },
+  { type: 'LOOP', label: 'Loop', color: '#84CC16', icon: '🔄' },
+  { type: 'NOOP', label: 'No Operation', color: '#9CA3AF', icon: '➡️' },
 ];
 
 const ACTION_TYPES = [
@@ -76,7 +89,7 @@ function EditorCanvas() {
   } = useEditorStore();
 
   const nodeTypes: NodeTypes = useMemo(
-    () => ({ triggerNode: TriggerNode, actionNode: ActionNode }),
+    () => ({ triggerNode: TriggerNode, actionNode: ActionNode, logicNode: LogicNode }),
     [],
   );
 
@@ -209,6 +222,7 @@ function EditorCanvas() {
 
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const isTrigger = category === 'trigger';
+      const isLogic = category === 'logic';
 
       if (isTrigger) {
         const currentTriggers = countTriggerNodes(useEditorStore.getState().nodes);
@@ -218,9 +232,14 @@ function EditorCanvas() {
         }
       }
 
+      let nodeFlowType = 'actionNode';
+      let idPrefix = 'action';
+      if (isTrigger) { nodeFlowType = 'triggerNode'; idPrefix = 'trigger'; }
+      else if (isLogic) { nodeFlowType = 'logicNode'; idPrefix = 'logic'; }
+
       const newNode: Node = {
-        id: `${isTrigger ? 'trigger' : 'action'}-${Date.now()}`,
-        type: isTrigger ? 'triggerNode' : 'actionNode',
+        id: `${idPrefix}-${Date.now()}`,
+        type: nodeFlowType,
         position,
         data: { label, type, config: {}, description: '' },
       };
@@ -246,8 +265,11 @@ function EditorCanvas() {
   }, [setSelectedNode]);
 
   const handleContextMenuDuplicate = useCallback((node: Node) => {
+    let idPrefix = 'action';
+    if (node.type === 'triggerNode') idPrefix = 'trigger';
+    else if (node.type === 'logicNode') idPrefix = 'logic';
     const newNode: Node = {
-      id: `${node.type === 'triggerNode' ? 'trigger' : 'action'}-${Date.now()}`,
+      id: `${idPrefix}-${Date.now()}`,
       type: node.type,
       position: { x: node.position.x + 50, y: node.position.y + 50 },
       data: { ...node.data },
@@ -324,6 +346,30 @@ function EditorCanvas() {
               <span className="text-base leading-none">{t.icon}</span>
               <span>{t.label}</span>
               <div className="ml-auto w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
+            </div>
+          ))}
+
+          <div className="my-3 border-t" />
+
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
+            Logic
+          </p>
+          {LOGIC_TYPES.map((l) => (
+            <div
+              key={l.type}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/reactflow-type', l.type);
+                e.dataTransfer.setData('application/reactflow-label', l.label);
+                e.dataTransfer.setData('application/reactflow-category', 'logic');
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              className="mb-1.5 cursor-grab rounded-lg border p-2.5 text-sm font-medium hover:shadow-md transition-all active:cursor-grabbing flex items-center gap-2"
+              style={{ borderColor: `${l.color}40`, background: `${l.color}08` }}
+            >
+              <span className="text-base leading-none">{l.icon}</span>
+              <span>{l.label}</span>
+              <div className="ml-auto w-2 h-2 rounded-full" style={{ backgroundColor: l.color }} />
             </div>
           ))}
 

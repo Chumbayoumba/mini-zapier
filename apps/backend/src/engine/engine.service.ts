@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActionRegistry } from './action-registry';
+import { isMultiOutputResult } from './action-handler.interface';
 import {
   ExecutionContext,
   RetryConfig,
@@ -131,6 +132,12 @@ export class EngineService {
           continue;
         }
 
+        // Skip nodes on empty multi-output branches
+        if (context.stepResults[node.id]?._skipped) {
+          this.logger.log(`Skipping node ${node.id} — on empty branch`);
+          continue;
+        }
+
         // Pause check before each step
         const execCheck = await this.prisma.workflowExecution.findUnique({
           where: { id: context.executionId },
@@ -149,8 +156,16 @@ export class EngineService {
           return context.executionId;
         }
 
-        await this.executeStepWithRetry(node, context, errorConfig.retry);
+        const nodeInput = this.getInputForNode(node.id, edges, context);
+        await this.executeStepWithRetry(node, context, errorConfig.retry, nodeInput);
         context.lastCompletedNodeId = node.id;
+
+        // If this was a multi-output node with empty outputs for a branch,
+        // skip downstream nodes that would receive no data
+        const result = context.stepResults[node.id];
+        if (isMultiOutputResult(result)) {
+          this.markSkippedBranches(node.id, result, edges, nodes, context);
+        }
       }
 
       const endTime = new Date();
@@ -256,6 +271,12 @@ export class EngineService {
           continue;
         }
 
+        // Skip nodes on empty multi-output branches
+        if (context.stepResults[node.id]?._skipped) {
+          this.logger.log(`Skipping node ${node.id} — on empty branch`);
+          continue;
+        }
+
         // Pause check
         const execCheck = await this.prisma.workflowExecution.findUnique({
           where: { id: executionId },
@@ -273,8 +294,14 @@ export class EngineService {
           return executionId;
         }
 
-        await this.executeStepWithRetry(node, context, errorConfig.retry);
+        const nodeInput = this.getInputForNode(node.id, edges, context);
+        await this.executeStepWithRetry(node, context, errorConfig.retry, nodeInput);
         context.lastCompletedNodeId = node.id;
+
+        const result = context.stepResults[node.id];
+        if (isMultiOutputResult(result)) {
+          this.markSkippedBranches(node.id, result, edges, nodes, context);
+        }
       }
 
       const endTime = new Date();
@@ -314,6 +341,7 @@ export class EngineService {
     node: any,
     context: ExecutionContext,
     retryConfig: RetryConfig,
+    nodeInput?: any,
   ): Promise<any> {
     const startedAt = new Date();
 
@@ -398,6 +426,7 @@ export class EngineService {
       try {
         const input = {
           ...resolvedConfig,
+          _nodeInput: nodeInput,
           _context: {
             ...context.stepResults,
             triggerData: context.triggerData,
@@ -494,6 +523,61 @@ export class EngineService {
   private async executeAction(type: string, input: any): Promise<any> {
     const handler = this.actionRegistry.get(type);
     return handler.execute(input);
+  }
+
+  /**
+   * Determine input data for a node based on incoming edges.
+   * For multi-output sources, routes the correct output branch via sourceHandle.
+   */
+  private getInputForNode(nodeId: string, edges: any[], context: ExecutionContext): any {
+    const incomingEdges = edges.filter((e: any) => e.target === nodeId);
+    if (incomingEdges.length === 0) return context.triggerData;
+
+    const inputs = incomingEdges.map((edge: any) => {
+      const sourceResult = context.stepResults[edge.source];
+      if (isMultiOutputResult(sourceResult) && edge.sourceHandle) {
+        const outputIndex = parseInt(edge.sourceHandle.replace('output-', ''), 10);
+        if (!isNaN(outputIndex) && sourceResult.outputs[outputIndex] !== undefined) {
+          return sourceResult.outputs[outputIndex];
+        }
+        return null;
+      }
+      return sourceResult;
+    });
+
+    return inputs.length === 1 ? inputs[0] : inputs;
+  }
+
+  /**
+   * Mark downstream nodes of empty output branches as skipped so they are not executed.
+   */
+  private markSkippedBranches(
+    nodeId: string,
+    result: { outputs: Array<any[]> },
+    edges: any[],
+    nodes: any[],
+    context: ExecutionContext,
+  ): void {
+    const outgoingEdges = edges.filter((e: any) => e.source === nodeId);
+    for (const edge of outgoingEdges) {
+      if (!edge.sourceHandle) continue;
+      const outputIndex = parseInt(edge.sourceHandle.replace('output-', ''), 10);
+      if (isNaN(outputIndex)) continue;
+      const output = result.outputs[outputIndex];
+      if (!output || (Array.isArray(output) && output.length === 0)) {
+        // Mark all downstream nodes on this branch as skipped
+        this.markBranchSkipped(edge.target, edges, context);
+      }
+    }
+  }
+
+  private markBranchSkipped(nodeId: string, edges: any[], context: ExecutionContext): void {
+    if (context.stepResults[nodeId] !== undefined) return;
+    context.stepResults[nodeId] = { _skipped: true };
+    const downstream = edges.filter((e: any) => e.source === nodeId);
+    for (const edge of downstream) {
+      this.markBranchSkipped(edge.target, edges, context);
+    }
   }
 
   private getExecutionOrder(nodes: any[], edges: any[]): any[] {

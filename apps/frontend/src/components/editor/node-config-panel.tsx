@@ -118,6 +118,86 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
   ],
 };
 
+const LOGIC_FIELDS: Record<string, Array<ConfigField>> = {
+  IF: [
+    { key: 'field', label: 'Field to Evaluate', placeholder: '{{trigger.value}}', required: true, hint: 'Field or expression to check' },
+    { key: 'operator', label: 'Operator', placeholder: 'equals', inputType: 'select', options: [
+      { value: 'equals', label: 'Equals' },
+      { value: 'notEquals', label: 'Not Equals' },
+      { value: 'contains', label: 'Contains' },
+      { value: 'greaterThan', label: 'Greater Than' },
+      { value: 'lessThan', label: 'Less Than' },
+      { value: 'exists', label: 'Exists' },
+      { value: 'isEmpty', label: 'Is Empty' },
+    ] },
+    { key: 'value', label: 'Value', placeholder: 'Expected value' },
+    { key: 'combinator', label: 'Combine Multiple', placeholder: '', inputType: 'select', options: [
+      { value: 'AND', label: 'AND — all must match' },
+      { value: 'OR', label: 'OR — any must match' },
+    ], hint: 'How to combine when multiple conditions exist' },
+  ],
+  SWITCH: [
+    { key: 'field', label: 'Value to Check', placeholder: '{{trigger.status}}', required: true, hint: 'Field or expression to evaluate' },
+    { key: 'outputCount', label: 'Number of Outputs', placeholder: '3', type: 'number', hint: 'Total branches including Default (min 2)' },
+    { key: 'rules', label: 'Rules (JSON)', placeholder: '[{"value": "active", "output": 0}, {"value": "inactive", "output": 1}]', inputType: 'textarea', rows: 4, hint: 'Array of {value, output} pairs' },
+    { key: 'fallbackOutput', label: 'Default Output Index', placeholder: '2', type: 'number', hint: 'Output index for unmatched values (last branch)' },
+  ],
+  FILTER: [
+    { key: 'field', label: 'Field to Filter', placeholder: '{{trigger.items}}', required: true },
+    { key: 'operator', label: 'Operator', placeholder: 'equals', inputType: 'select', options: [
+      { value: 'equals', label: 'Equals' },
+      { value: 'notEquals', label: 'Not Equals' },
+      { value: 'contains', label: 'Contains' },
+      { value: 'greaterThan', label: 'Greater Than' },
+      { value: 'lessThan', label: 'Less Than' },
+      { value: 'exists', label: 'Exists' },
+    ] },
+    { key: 'value', label: 'Value', placeholder: 'Filter value' },
+    { key: 'combinator', label: 'Combine', placeholder: '', inputType: 'select', options: [
+      { value: 'AND', label: 'AND' },
+      { value: 'OR', label: 'OR' },
+    ] },
+  ],
+  SET: [
+    { key: 'mode', label: 'Mode', placeholder: '', inputType: 'select', options: [
+      { value: 'set', label: 'Set — overwrite fields' },
+      { value: 'append', label: 'Append — add to existing' },
+      { value: 'remove', label: 'Remove — delete fields' },
+    ] },
+    { key: 'fields', label: 'Fields (JSON)', placeholder: '[{"name": "key", "value": "value"}]', inputType: 'textarea', rows: 4, hint: 'Array of {name, value} pairs' },
+  ],
+  CODE: [
+    { key: 'language', label: 'Language', placeholder: '', inputType: 'select', options: [
+      { value: 'javascript', label: 'JavaScript' },
+    ] },
+    { key: 'code', label: 'Code', placeholder: '// Access input data with $input\n// Return result\nreturn { processed: true };', inputType: 'code', rows: 8, hint: 'Write JavaScript that receives $input and returns output' },
+  ],
+  MERGE: [
+    { key: 'mode', label: 'Mode', placeholder: '', inputType: 'select', options: [
+      { value: 'append', label: 'Append — combine all items' },
+      { value: 'mergeByKey', label: 'Merge by Key — join on field' },
+      { value: 'keepMatching', label: 'Keep Matching — inner join' },
+      { value: 'removeMatching', label: 'Remove Matching — anti join' },
+    ] },
+    { key: 'joinField', label: 'Join Field', placeholder: 'id', hint: 'Field name to join on (for merge modes)' },
+  ],
+  WAIT: [
+    { key: 'amount', label: 'Duration', placeholder: '5', type: 'number', required: true },
+    { key: 'unit', label: 'Unit', placeholder: '', inputType: 'select', options: [
+      { value: 'seconds', label: 'Seconds' },
+      { value: 'minutes', label: 'Minutes' },
+      { value: 'hours', label: 'Hours' },
+    ] },
+  ],
+  LOOP: [
+    { key: 'batchSize', label: 'Batch Size', placeholder: '10', type: 'number', hint: 'Number of items to process per iteration' },
+  ],
+  NOOP: [],
+  MANUAL_TRIGGER: [
+    { key: 'testData', label: 'Test Data (JSON)', placeholder: '{"key": "value"}', inputType: 'textarea', rows: 4, hint: 'JSON data to inject when manually triggered' },
+  ],
+};
+
 const CRON_EXAMPLES = [
   { expr: '* * * * *', desc: 'Every minute' },
   { expr: '*/5 * * * *', desc: 'Every 5 minutes' },
@@ -162,9 +242,14 @@ export function NodeConfigPanel() {
   if (!selectedNode) return null;
 
   const nodeType = selectedNode.data?.type as string;
-  // Use ReactFlow node type to distinguish trigger vs action (not data.type which can be ambiguous e.g. TELEGRAM)
+  // Use ReactFlow node type to distinguish trigger vs action vs logic
   const isTrigger = selectedNode.type === 'triggerNode';
-  let fields = isTrigger ? TRIGGER_FIELDS[nodeType] : ACTION_FIELDS[nodeType];
+  const isLogic = selectedNode.type === 'logicNode';
+  let fields = isTrigger
+    ? TRIGGER_FIELDS[nodeType]
+    : isLogic
+      ? LOGIC_FIELDS[nodeType]
+      : ACTION_FIELDS[nodeType];
 
   // Check if workflow has a Telegram trigger (for smart defaults in action)
   const hasTelegramTrigger = nodes.some(
@@ -389,7 +474,7 @@ export function NodeConfigPanel() {
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{selectedNode.data?.label as string}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-              {isTrigger ? '⚡ Trigger' : '▶️ Action'} · {nodeType}
+              {isTrigger ? '⚡ Trigger' : isLogic ? '🔀 Logic' : '▶️ Action'} · {nodeType}
             </p>
           </div>
         </div>

@@ -10,6 +10,15 @@ import { EmailAction } from './actions/email.action';
 import { TelegramAction } from './actions/telegram.action';
 import { DatabaseAction } from './actions/database.action';
 import { TransformAction } from './actions/transform.action';
+import { IfAction } from './actions/if.action';
+import { SwitchAction } from './actions/switch.action';
+import { FilterAction } from './actions/filter.action';
+import { SetAction } from './actions/set.action';
+import { CodeAction } from './actions/code.action';
+import { WaitAction } from './actions/wait.action';
+import { NoopAction } from './actions/noop.action';
+import { ManualTriggerAction } from './actions/manual-trigger.action';
+import { LoopAction } from './actions/loop.action';
 
 @Module({
   imports: [
@@ -26,6 +35,15 @@ import { TransformAction } from './actions/transform.action';
     TelegramAction,
     DatabaseAction,
     TransformAction,
+    IfAction,
+    SwitchAction,
+    FilterAction,
+    SetAction,
+    CodeAction,
+    WaitAction,
+    NoopAction,
+    ManualTriggerAction,
+    LoopAction,
   ],
   exports: [EngineService, ActionRegistry, CredentialService],
 })
@@ -37,6 +55,15 @@ export class EngineModule implements OnModuleInit {
     private readonly telegramAction: TelegramAction,
     private readonly dbAction: DatabaseAction,
     private readonly transformAction: TransformAction,
+    private readonly ifAction: IfAction,
+    private readonly switchAction: SwitchAction,
+    private readonly filterAction: FilterAction,
+    private readonly setAction: SetAction,
+    private readonly codeAction: CodeAction,
+    private readonly waitAction: WaitAction,
+    private readonly noopAction: NoopAction,
+    private readonly manualTriggerAction: ManualTriggerAction,
+    private readonly loopAction: LoopAction,
   ) {}
 
   onModuleInit() {
@@ -46,6 +73,15 @@ export class EngineModule implements OnModuleInit {
       this.telegramAction,
       this.dbAction,
       this.transformAction,
+      this.ifAction,
+      this.switchAction,
+      this.filterAction,
+      this.setAction,
+      this.codeAction,
+      this.waitAction,
+      this.noopAction,
+      this.manualTriggerAction,
+      this.loopAction,
     ].forEach((handler) => this.registry.register(handler));
   }
 }

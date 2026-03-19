@@ -85,18 +85,24 @@ export class TemplateEngine {
   /**
    * Parse a dot-path into segments, handling array bracket notation.
    * "steps.node1.output.items[0].name" → ["steps","node1","output","items",0,"name"]
+   * "steps.nodeId.outputs[0]" → ["steps","nodeId","outputs",0]
+   * "steps.nodeId.data.fieldName" → ["steps","nodeId","data","fieldName"]
    */
   private static parsePath(path: string): (string | number)[] {
     const segments: (string | number)[] = [];
     const parts = path.split('.');
 
     for (const part of parts) {
-      const bracketMatch = /^([^[]*)\[(\d+)\]$/.exec(part);
-      if (bracketMatch) {
-        if (bracketMatch[1]) segments.push(bracketMatch[1]);
-        segments.push(parseInt(bracketMatch[2], 10));
-      } else {
-        segments.push(part);
+      // Handle multiple bracket notations: e.g. "matrix[0][1]"
+      const chunks = part.split(/(\[\d+\])/);
+      for (const chunk of chunks) {
+        if (!chunk) continue;
+        const bracketMatch = /^\[(\d+)\]$/.exec(chunk);
+        if (bracketMatch) {
+          segments.push(parseInt(bracketMatch[1], 10));
+        } else {
+          segments.push(chunk);
+        }
       }
     }
 
