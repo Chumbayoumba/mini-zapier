@@ -401,16 +401,25 @@ export class IntegrationsService {
 
   async verifyOpenRouter(apiKey: string): Promise<{ ok: boolean; message?: string; models?: string[] }> {
     try {
-      const res = await fetch('https://openrouter.ai/api/v1/models', {
+      // Use /auth/key endpoint which requires valid API key
+      const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
         headers: { Authorization: `Bearer ${apiKey}` },
         signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) {
-        return { ok: false, message: `API returned ${res.status}` };
+        return { ok: false, message: 'Invalid API key' };
       }
-      const data = await res.json();
-      const models = (data.data || []).slice(0, 10).map((m: any) => m.id);
-      return { ok: true, message: `Verified — ${data.data?.length || 0} models available`, models };
+      const authData = await res.json();
+      if (!authData.data) {
+        return { ok: false, message: 'Invalid API key' };
+      }
+      // Fetch models
+      const modelsRes = await fetch('https://openrouter.ai/api/v1/models', {
+        signal: AbortSignal.timeout(10000),
+      });
+      const modelsData = await modelsRes.json();
+      const models = (modelsData.data || []).slice(0, 10).map((m: any) => m.id);
+      return { ok: true, message: `Verified — key is valid (${authData.data.label || 'active'})`, models };
     } catch (e: any) {
       return { ok: false, message: e.message || 'Connection failed' };
     }

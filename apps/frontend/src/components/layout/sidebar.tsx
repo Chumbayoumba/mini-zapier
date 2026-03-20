@@ -18,6 +18,7 @@ import {
   Blocks,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import { setLoggingOut } from '@/lib/api';
 import { useSidebarStore } from '@/stores/sidebar-store';
 import { useRouter } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -39,8 +40,9 @@ export function Sidebar() {
   const { collapsed, toggle } = useSidebarStore();
 
   const handleLogout = () => {
+    setLoggingOut();
     logout();
-    window.location.href = '/login';
+    window.location.replace('/login');
   };
 
   return (
