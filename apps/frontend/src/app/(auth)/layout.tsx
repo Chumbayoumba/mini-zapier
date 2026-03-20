@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Zap, Workflow, BarChart3, Globe, Shield, ArrowRight } from 'lucide-react';
 
 const features = [
@@ -17,12 +18,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-violet-500/15 rounded-full blur-3xl" />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-2.5 mb-12">
+          <Link href="/" className="flex items-center gap-2.5 mb-12 hover:opacity-80 transition-opacity">
             <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-500 shadow-lg shadow-indigo-500/30">
               <Zap className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold tracking-tight">FlowForge</span>
-          </div>
+          </Link>
 
           <h1 className="text-3xl xl:text-4xl font-bold leading-tight mb-3">
             Automate your<br />workflows with ease
@@ -53,7 +54,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* Right — Auth form */}
       <div className="flex flex-1 items-center justify-center bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-6">
-        <div className="w-full max-w-md">{children}</div>
+        <div className="w-full max-w-md">
+            <Link href="/" className="flex items-center gap-2 mb-8 lg:hidden hover:opacity-80 transition-opacity">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600 shadow-md">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-lg font-bold">FlowForge</span>
+            </Link>
+            {children}
+          </div>
       </div>
     </div>
   );

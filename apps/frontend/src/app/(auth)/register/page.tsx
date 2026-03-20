@@ -38,12 +38,12 @@ export default function RegisterPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-center gap-2.5 mb-8 lg:hidden">
+      <a href="/" className="flex items-center justify-center gap-2.5 mb-8 lg:hidden hover:opacity-80 transition-opacity">
         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-500/25">
           <Zap className="h-5 w-5 text-white" />
         </div>
         <span className="text-xl font-bold tracking-tight">FlowForge</span>
-      </div>
+      </a>
 
       <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/30 dark:border dark:border-white/10">
         <CardHeader className="text-center pb-2 pt-8">
@@ -84,9 +84,9 @@ export default function RegisterPage() {
 
             <p className="text-center text-xs text-muted-foreground">
               By creating an account you agree to our{' '}
-              <button type="button" className="text-primary hover:text-primary/80 transition-colors">Terms</button>
+              <a href="/terms" className="text-primary hover:text-primary/80 transition-colors">Terms</a>
               {' '}and{' '}
-              <button type="button" className="text-primary hover:text-primary/80 transition-colors">Privacy Policy</button>
+              <a href="/privacy" className="text-primary hover:text-primary/80 transition-colors">Privacy Policy</a>
             </p>
 
             <div className="relative my-1">

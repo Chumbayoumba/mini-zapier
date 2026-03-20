@@ -93,7 +93,7 @@ export function WorkflowCard({ workflow, onRun, onDelete }: WorkflowCardProps) {
           size="sm"
           variant="ghost"
           className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-          onClick={() => onDelete?.(workflow.id)}
+          onClick={() => { if (confirm('Are you sure you want to delete this workflow?')) onDelete?.(workflow.id); }}
           title="Delete"
         >
           <Trash2 className="h-3 w-3" />

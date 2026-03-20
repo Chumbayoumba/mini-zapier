@@ -11,7 +11,6 @@ import { useAuthStore } from '@/stores/auth-store';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/lib/error-handler';
-import Link from 'next/link';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -48,24 +47,31 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div>
-        <label className="text-sm font-medium">Email</label>
-        <Input {...register('email')} type="email" placeholder="you@example.com" className="mt-1" />
-        {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
-      </div>
-      <div>
-        <label className="text-sm font-medium">Password</label>
-        <Input {...register('password')} type="password" placeholder="••••••" className="mt-1" />
-        {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
-      </div>
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Signing in...' : 'Sign In'}
-      </Button>
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Email</label>
+          <Input {...register('email')} type="email" placeholder="you@example.com" className="mt-1" />
+          {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+        </div>
+        <div>
+          <label className="text-sm font-medium">Password</label>
+          <Input {...register('password')} type="password" placeholder="••••••" className="mt-1" />
+          {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+        </div>
+        <div className="flex justify-end">
+          <a href="/forgot-password" onClick={(e) => { e.stopPropagation(); }} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+            Forgot password?
+          </a>
+        </div>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign In'}
+        </Button>
+      </form>
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{' '}
-        <Link href="/register" className="text-primary underline">Sign Up</Link>
+        <a href="/register" className="text-primary underline">Sign Up</a>
       </p>
-    </form>
+    </div>
   );
 }

@@ -242,7 +242,7 @@ export default function WorkflowsPage() {
                         size="sm"
                         variant="ghost"
                         className="h-7 text-xs text-destructive hover:text-destructive ml-auto"
-                        onClick={() => deleteWorkflow.mutate(wf.id)}
+                        onClick={() => { if (confirm('Are you sure you want to delete this workflow?')) deleteWorkflow.mutate(wf.id); }}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

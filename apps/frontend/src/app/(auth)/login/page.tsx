@@ -48,12 +48,12 @@ function LoginForm() {
 
   return (
     <div>
-      <div className="flex items-center justify-center gap-2.5 mb-8 lg:hidden">
+      <a href="/" className="flex items-center justify-center gap-2.5 mb-8 lg:hidden hover:opacity-80 transition-opacity">
         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 shadow-lg shadow-indigo-500/25">
           <Zap className="h-5 w-5 text-white" />
         </div>
         <span className="text-xl font-bold tracking-tight">FlowForge</span>
-      </div>
+      </a>
 
       <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/30 dark:border dark:border-white/10">
         <CardHeader className="text-center pb-2 pt-8">
@@ -90,9 +90,9 @@ function LoginForm() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium">Password</label>
-                <button type="button" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                <a href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary transition-colors">
                   Forgot password?
-                </button>
+                </a>
               </div>
               <Input
                 {...register('password')}

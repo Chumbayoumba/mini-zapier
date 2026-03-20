@@ -85,9 +85,15 @@ export function RegisterForm() {
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? 'Creating account...' : 'Create Account'}
       </Button>
+      <p className="text-center text-xs text-muted-foreground">
+        By creating an account, you agree to our{' '}
+        <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
+        {' '}and{' '}
+        <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>.
+      </p>
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="text-primary underline">Sign In</Link>
+        <a href="/login" className="text-primary underline">Sign In</a>
       </p>
     </form>
   );
