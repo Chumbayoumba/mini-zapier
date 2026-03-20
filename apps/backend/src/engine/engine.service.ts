@@ -107,6 +107,7 @@ export class EngineService {
       triggerData,
       stepResults: {},
       integrations,
+      allNodes: rawNodes,
     };
 
     this.logger.log({
@@ -357,6 +358,14 @@ export class EngineService {
     );
 
     // Resolve integrationId → real credentials for Telegram actions
+    // Also auto-inherit bot token from trigger if not configured
+    if (node.data.type === 'TELEGRAM' && !resolvedConfig.integrationId && !resolvedConfig.botToken) {
+      // Find trigger node's integrationId and use its bot token
+      const triggerNode = context.allNodes?.find((n: any) => n.type === 'triggerNode' && n.data?.type === 'TELEGRAM');
+      if (triggerNode?.data?.config?.integrationId) {
+        resolvedConfig.integrationId = triggerNode.data.config.integrationId;
+      }
+    }
     if (node.data.type === 'TELEGRAM' && resolvedConfig.integrationId) {
       try {
         const integration = await this.prisma.integration.findUnique({
@@ -389,6 +398,23 @@ export class EngineService {
         }
       } catch (e) {
         this.logger.warn(`Failed to resolve SMTP integration ${resolvedConfig.integrationId}: ${e}`);
+      }
+    }
+
+    // Resolve integrationId → API key for AI action nodes
+    if (['OPENAI', 'ANTHROPIC', 'MISTRAL', 'OPENROUTER'].includes(node.data.type) && resolvedConfig.integrationId) {
+      try {
+        const integration = await this.prisma.integration.findUnique({
+          where: { id: resolvedConfig.integrationId },
+        });
+        if (integration?.config) {
+          const cfg = integration.config as any;
+          if (cfg.apiKey && !resolvedConfig.apiKey) {
+            resolvedConfig.apiKey = cfg.apiKey;
+          }
+        }
+      } catch (e) {
+        this.logger.warn(`Failed to resolve AI integration ${resolvedConfig.integrationId}: ${e}`);
       }
     }
 
@@ -454,6 +480,7 @@ export class EngineService {
           stepId: stepLog.id,
           nodeId: node.id,
           result,
+          duration: completedAt.getTime() - startedAt.getTime(),
         });
 
         this.logger.log({

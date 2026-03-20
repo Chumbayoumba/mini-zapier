@@ -6,6 +6,7 @@ export interface ExecutionContext {
   integrations?: any;
   lastCompletedNodeId?: string;
   correlationId?: string;
+  allNodes?: any[];
 }
 
 export interface RetryConfig {

@@ -249,12 +249,170 @@ export class IntegrationsService {
           return { ok: true, message: 'Database configuration saved' };
         case 'WEBHOOK':
           return { ok: true, message: 'Webhook is configured' };
+        case 'OPENAI': {
+          const r = await this.verifyOpenAI(config.apiKey);
+          return { ok: r.ok, message: r.message || (r.ok ? 'Verified' : 'Failed') };
+        }
+        case 'ANTHROPIC': {
+          const r = await this.verifyAnthropic(config.apiKey);
+          return { ok: r.ok, message: r.message || (r.ok ? 'Verified' : 'Failed') };
+        }
+        case 'MISTRAL': {
+          const r = await this.verifyMistral(config.apiKey);
+          return { ok: r.ok, message: r.message || (r.ok ? 'Verified' : 'Failed') };
+        }
+        case 'OPENROUTER': {
+          const r = await this.verifyOpenRouter(config.apiKey);
+          return { ok: r.ok, message: r.message || (r.ok ? 'Verified' : 'Failed') };
+        }
         default:
           return { ok: true, message: 'Configuration saved' };
       }
     } catch (error: any) {
       this.logger.error(`Integration test failed for ${id}`, error);
       return { ok: false, message: error.message || 'Connection test failed' };
+    }
+  }
+
+  async getModelsForIntegration(id: string, userId: string): Promise<{ models: Array<{ id: string; name: string }> }> {
+    const integration = await this.prisma.integration.findUnique({ where: { id } });
+    if (!integration) throw new NotFoundException('Integration not found');
+    if (integration.userId !== userId) throw new ForbiddenException();
+
+    const config = integration.config as Record<string, any>;
+    const apiKey = config.apiKey;
+    if (!apiKey) return { models: [] };
+
+    try {
+      switch (integration.type) {
+        case 'OPENAI': {
+          const res = await fetch('https://api.openai.com/v1/models', {
+            headers: { Authorization: `Bearer ${apiKey}` },
+            signal: AbortSignal.timeout(10000),
+          });
+          if (!res.ok) return { models: [] };
+          const data = await res.json();
+          return {
+            models: (data.data || [])
+              .filter((m: any) => m.id.includes('gpt') || m.id.includes('o1') || m.id.includes('o3') || m.id.includes('dall-e'))
+              .sort((a: any, b: any) => a.id.localeCompare(b.id))
+              .map((m: any) => ({ id: m.id, name: m.id })),
+          };
+        }
+        case 'ANTHROPIC':
+          return {
+            models: [
+              { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+              { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+              { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
+              { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' },
+              { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
+            ],
+          };
+        case 'MISTRAL': {
+          const res = await fetch('https://api.mistral.ai/v1/models', {
+            headers: { Authorization: `Bearer ${apiKey}` },
+            signal: AbortSignal.timeout(10000),
+          });
+          if (!res.ok) return { models: [] };
+          const data = await res.json();
+          return {
+            models: (data.data || [])
+              .sort((a: any, b: any) => a.id.localeCompare(b.id))
+              .map((m: any) => ({ id: m.id, name: m.id })),
+          };
+        }
+        case 'OPENROUTER': {
+          const res = await fetch('https://openrouter.ai/api/v1/models', {
+            headers: { Authorization: `Bearer ${apiKey}` },
+            signal: AbortSignal.timeout(10000),
+          });
+          if (!res.ok) return { models: [] };
+          const data = await res.json();
+          return {
+            models: (data.data || [])
+              .slice(0, 200)
+              .map((m: any) => ({ id: m.id, name: m.name || m.id })),
+          };
+        }
+        default:
+          return { models: [] };
+      }
+    } catch (e: any) {
+      this.logger.warn(`Failed to fetch models for integration ${id}: ${e.message}`);
+      return { models: [] };
+    }
+  }
+
+  async verifyOpenAI(apiKey: string): Promise<{ ok: boolean; message?: string; models?: string[] }> {
+    try {
+      const res = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, message: data?.error?.message || `API returned ${res.status}` };
+      }
+      const data = await res.json();
+      const models = (data.data || []).slice(0, 10).map((m: any) => m.id);
+      return { ok: true, message: `Verified — ${data.data?.length || 0} models available`, models };
+    } catch (e: any) {
+      return { ok: false, message: e.message || 'Connection failed' };
+    }
+  }
+
+  async verifyAnthropic(apiKey: string): Promise<{ ok: boolean; message?: string }> {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) return { ok: false, message: 'Invalid API key' };
+        return { ok: false, message: data?.error?.message || `API returned ${res.status}` };
+      }
+      return { ok: true, message: 'API key verified — Claude models available' };
+    } catch (e: any) {
+      return { ok: false, message: e.message || 'Connection failed' };
+    }
+  }
+
+  async verifyMistral(apiKey: string): Promise<{ ok: boolean; message?: string; models?: string[] }> {
+    try {
+      const res = await fetch('https://api.mistral.ai/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return { ok: false, message: data?.message || `API returned ${res.status}` };
+      }
+      const data = await res.json();
+      const models = (data.data || []).slice(0, 10).map((m: any) => m.id);
+      return { ok: true, message: `Verified — ${data.data?.length || 0} models available`, models };
+    } catch (e: any) {
+      return { ok: false, message: e.message || 'Connection failed' };
+    }
+  }
+
+  async verifyOpenRouter(apiKey: string): Promise<{ ok: boolean; message?: string; models?: string[] }> {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        return { ok: false, message: `API returned ${res.status}` };
+      }
+      const data = await res.json();
+      const models = (data.data || []).slice(0, 10).map((m: any) => m.id);
+      return { ok: true, message: `Verified — ${data.data?.length || 0} models available`, models };
+    } catch (e: any) {
+      return { ok: false, message: e.message || 'Connection failed' };
     }
   }
 

@@ -8,15 +8,21 @@ export class IfAction implements ActionHandler {
   private readonly logger = new Logger(IfAction.name);
 
   async execute(input: any): Promise<MultiOutputResult> {
-    const { conditions = [], combinator = 'AND', _nodeInput, _context } = input;
+    const { conditions = [], combinator = 'AND', field, operator, value, _nodeInput, _context } = input;
     const data = _nodeInput ?? _context?.triggerData ?? _context ?? {};
 
-    if (!Array.isArray(conditions) || conditions.length === 0) {
+    // Support both formats: conditions array or single field/operator/value
+    let effectiveConditions = conditions;
+    if ((!Array.isArray(effectiveConditions) || effectiveConditions.length === 0) && field && operator) {
+      effectiveConditions = [{ field, operator, value }];
+    }
+
+    if (!Array.isArray(effectiveConditions) || effectiveConditions.length === 0) {
       this.logger.warn('IF node: no conditions defined, routing to false branch');
       return { outputs: [[], [data]] };
     }
 
-    const result = this.evaluateConditions(data, conditions, combinator);
+    const result = this.evaluateConditions(data, effectiveConditions, combinator);
     this.logger.log(`IF node evaluated: ${result} (combinator=${combinator})`);
 
     return {
@@ -34,7 +40,11 @@ export class IfAction implements ActionHandler {
 
   private evaluateSingle(data: any, condition: any): boolean {
     const { field, operator, value } = condition;
-    const fieldValue = this.resolveField(data, field);
+    // If field looks like a path (contains dots, no spaces), resolve from data
+    // Otherwise treat it as an already-resolved value (from template engine)
+    const fieldValue = (typeof field === 'string' && field.includes('.') && !field.includes(' '))
+      ? this.resolveField(data, field)
+      : field;
 
     switch (operator) {
       case 'equals':

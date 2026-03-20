@@ -18,36 +18,48 @@ export class OpenRouterAction implements ActionHandler {
       temperature = 0.7,
       maxTokens = 1024,
       responseFormat,
+    _nodeInput,
     } = config;
 
     if (!apiKey) throw new Error('OpenRouter API key is required');
 
+    // Use input from previous node (e.g. trigger message) if no userPrompt configured
+    // Unwrap nested arrays from IF/Switch branches
+    let prev = _nodeInput;
+    while (Array.isArray(prev)) prev = prev[0];
+    const inputText = prev?.text || prev?.message?.text || prev?.body || prev?.content || (typeof prev === 'string' ? prev : '');
+    const prompt = userPrompt || inputText || 'Hello';
     const messages: any[] = [];
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-    messages.push({ role: 'user', content: userPrompt });
+    messages.push({ role: 'user', content: prompt });
 
     const body: any = { model, messages, temperature: Number(temperature), max_tokens: Number(maxTokens) };
     if (responseFormat === 'json') body.response_format = { type: 'json_object' };
 
-    this.logger.log(`OpenRouter ${model}: ${userPrompt.slice(0, 80)}...`);
+    this.logger.log(`OpenRouter ${model}: ${prompt.slice(0, 80)}...`);
 
-    const res = await axios.post('https://openrouter.ai/api/v1/chat/completions', body, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://flowforge.app',
-        'X-Title': 'FlowForge',
-      },
-      timeout: 120000,
-    });
+    try {
+      const res = await axios.post('https://openrouter.ai/api/v1/chat/completions', body, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://flowforge.app',
+          'X-Title': 'FlowForge',
+        },
+        timeout: 120000,
+      });
 
-    const choice = res.data.choices?.[0];
-    return {
-      content: choice?.message?.content || '',
-      model: res.data.model,
-      usage: res.data.usage,
-      finishReason: choice?.finish_reason,
-    };
+      const choice = res.data.choices?.[0];
+      return {
+        content: choice?.message?.content || '',
+        model: res.data.model,
+        usage: res.data.usage,
+        finishReason: choice?.finish_reason,
+      };
+    } catch (error: any) {
+      const detail = error.response?.data?.error?.message || error.response?.data?.message || error.message;
+      throw new Error(`OpenRouter API error: ${detail}`);
+    }
   }
 
   /** Fetch available models for a given API key (cached 5 min) */

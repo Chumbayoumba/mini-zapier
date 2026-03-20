@@ -21,7 +21,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useEditorStore } from '@/stores/editor-store';
 import { useExecutionStore } from '@/stores/execution-store';
-import { useWorkflow, useUpdateWorkflow } from '@/hooks/use-workflows';
+import { useWorkflow, useUpdateWorkflowSilent } from '@/hooks/use-workflows';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { useAutoSave } from '@/hooks/use-auto-save';
 import { useExecutionSocket } from '@/hooks/use-execution-socket';
@@ -72,11 +72,18 @@ const ACTION_TYPES = [
   { type: 'TRANSFORM', label: 'Transform', color: '#6366F1', icon: '🔄' },
 ];
 
+const AI_TYPES = [
+  { type: 'OPENAI', label: 'OpenAI', color: '#10A37F', icon: '🤖' },
+  { type: 'ANTHROPIC', label: 'Anthropic', color: '#D97706', icon: '🧠' },
+  { type: 'MISTRAL', label: 'Mistral', color: '#3B82F6', icon: '🌊' },
+  { type: 'OPENROUTER', label: 'OpenRouter', color: '#8B5CF6', icon: '🔀' },
+];
+
 function EditorCanvas() {
   const params = useParams();
   const workflowId = params.id as string;
   const { data: workflow, isLoading, error, refetch } = useWorkflow(workflowId);
-  const updateWorkflow = useUpdateWorkflow();
+  const updateWorkflow = useUpdateWorkflowSilent();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, getViewport } = useReactFlow();
 
@@ -129,18 +136,18 @@ function EditorCanvas() {
 
   const handleSave = useCallback(async () => {
     try {
+      const { nodes: currentNodes, edges: currentEdges } = useEditorStore.getState();
       useEditorStore.getState().markSaving();
       await updateWorkflow.mutateAsync({
         id: workflowId,
-        definition: { nodes, edges },
+        definition: { nodes: currentNodes, edges: currentEdges },
       });
       useEditorStore.getState().markSaved();
-      toast.success('Workflow saved');
     } catch (err) {
       useEditorStore.setState({ isSaving: false });
       toast.error(getErrorMessage(err));
     }
-  }, [workflowId, nodes, edges, updateWorkflow]);
+  }, [workflowId, updateWorkflow]);
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
@@ -150,7 +157,13 @@ function EditorCanvas() {
 
   const handleRun = useCallback(async () => {
     try {
-      const currentNodes = useEditorStore.getState().nodes;
+      // Save before running to ensure latest config is persisted
+      const { nodes: currentNodes, edges: currentEdges } = useEditorStore.getState();
+      await updateWorkflow.mutateAsync({
+        id: workflowId,
+        definition: { nodes: currentNodes, edges: currentEdges },
+      });
+
       const triggerNode = currentNodes.find(
         (n) => n.type === 'triggerNode' || n.id?.startsWith('trigger-'),
       );
@@ -173,11 +186,16 @@ function EditorCanvas() {
             body: { test: true, timestamp: Date.now() },
           };
         } else if (triggerType === 'TELEGRAM') {
+          const botIntegrationId = cfg.integrationId as string;
           testTriggerData = {
-            chatId: String(cfg.chatId || ''),
-            from: 'TestUser',
-            text: '/test manual run',
+            chat: { id: cfg.chatId || 0 },
+            chatId: String(cfg.chatId || '0'),
+            from: { first_name: 'Test User', username: 'testuser', id: 123456 },
+            text: 'Hello bot!',
+            command: 'test',
             messageId: Date.now(),
+            _testMode: true,
+            _integrationId: botIntegrationId,
           };
         } else if (triggerType === 'CRON') {
           testTriggerData = {
@@ -188,7 +206,7 @@ function EditorCanvas() {
       }
 
       await api.post(`/workflows/${workflowId}/execute`, testTriggerData);
-      toast.success('Workflow execution started');
+      toast.success('Test started');
       useExecutionStore.getState().resetExecution();
       setConsoleOpen(true);
       setRunTrigger((prev) => prev + 1);
@@ -256,6 +274,7 @@ function EditorCanvas() {
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       const isTrigger = category === 'trigger';
       const isLogic = category === 'logic';
+      const isAi = category === 'ai';
 
       if (isTrigger) {
         const currentTriggers = countTriggerNodes(useEditorStore.getState().nodes);
@@ -269,6 +288,7 @@ function EditorCanvas() {
       let idPrefix = 'action';
       if (isTrigger) { nodeFlowType = 'triggerNode'; idPrefix = 'trigger'; }
       else if (isLogic) { nodeFlowType = 'logicNode'; idPrefix = 'logic'; }
+      else if (isAi) { idPrefix = 'ai'; }
 
       const newNode: Node = {
         id: `${idPrefix}-${Date.now()}`,
@@ -333,8 +353,8 @@ function EditorCanvas() {
 
   const handleAddStickyNote = useCallback(() => {
     const vp = getViewport();
-    const centerX = (-vp.x + window.innerWidth / 2) / vp.zoom;
-    const centerY = (-vp.y + window.innerHeight / 2) / vp.zoom;
+    const centerX = (-vp.x + 400) / vp.zoom;
+    const centerY = (-vp.y + 300) / vp.zoom;
     const newNode: Node = {
       id: `sticky-${Date.now()}`,
       type: 'stickyNote',
@@ -455,6 +475,30 @@ function EditorCanvas() {
               <div className="ml-auto w-2 h-2 rounded-full" style={{ backgroundColor: a.color }} />
             </div>
           ))}
+
+          <div className="my-3 border-t" />
+
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
+            AI
+          </p>
+          {AI_TYPES.map((a) => (
+            <div
+              key={a.type}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData('application/reactflow-type', a.type);
+                e.dataTransfer.setData('application/reactflow-label', a.label);
+                e.dataTransfer.setData('application/reactflow-category', 'ai');
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              className="mb-1.5 cursor-grab rounded-lg border p-2.5 text-sm font-medium hover:shadow-md transition-all active:cursor-grabbing flex items-center gap-2"
+              style={{ borderColor: `${a.color}40`, background: `${a.color}08` }}
+            >
+              <span className="text-base leading-none">{a.icon}</span>
+              <span>{a.label}</span>
+              <div className="ml-auto w-2 h-2 rounded-full" style={{ backgroundColor: a.color }} />
+            </div>
+          ))}
         </div>
       </div>
 
@@ -498,7 +542,7 @@ function EditorCanvas() {
             connectionLineStyle={{ stroke: '#6366F1', strokeWidth: 2, strokeDasharray: '5 5' }}
             deleteKeyCode={null}
           >
-            <Controls className="!rounded-lg !border !shadow-sm" />
+            
             {showMinimap && (
             <MiniMap
               nodeStrokeWidth={3}

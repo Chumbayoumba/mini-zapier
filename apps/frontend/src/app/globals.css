@@ -20,6 +20,8 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
   }
@@ -41,6 +43,8 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
     --ring: 224.3 76.3% 48%;
   }
 }

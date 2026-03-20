@@ -19,6 +19,7 @@ export class TriggersService {
 
   private getBaseUrl(): string {
     return (
+      this.configService.get('WEBHOOK_BASE_URL') ||
       this.configService.get('BASE_URL') ||
       this.configService.get('FRONTEND_URL') ||
       'https://zapier.egor-dev.ru'

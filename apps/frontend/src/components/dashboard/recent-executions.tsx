@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PlayCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { WorkflowExecution } from '@/types';
@@ -46,7 +47,16 @@ export function RecentExecutions({ executions = [] }: RecentExecutionsProps) {
               <div className="flex items-center gap-3 min-w-0">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{exec.workflow?.name || exec.workflowId}</p>
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <p className="text-sm font-medium truncate">{exec.workflow?.name || exec.workflowId}</p>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>{exec.workflow?.name || exec.workflowId}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <p className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(exec.createdAt), { addSuffix: true })}
                   </p>

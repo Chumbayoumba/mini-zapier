@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useReactFlow } from '@xyflow/react';
 import { useStore } from 'zustand';
 import { useEditorStore } from '@/stores/editor-store';
-import { useActivateWorkflow, useDeactivateWorkflow } from '@/hooks/use-workflows';
+import { useActivateWorkflow, useDeactivateWorkflow, useUpdateWorkflowSilent } from '@/hooks/use-workflows';
 import { SaveIndicator } from '@/components/editor/save-indicator';
 import { Button } from '@/components/ui/button';
 import {
@@ -50,16 +50,16 @@ export function EditorToolbar({
 
   const activateWorkflow = useActivateWorkflow();
   const deactivateWorkflow = useDeactivateWorkflow();
+  const updateWorkflow = useUpdateWorkflowSilent();
 
   const handleToggleActive = async () => {
-    try {
-      if (workflowActive) {
-        await deactivateWorkflow.mutateAsync(workflowId);
-      } else {
-        await activateWorkflow.mutateAsync(workflowId);
-      }
-    } catch (err) {
-      toast.error(getErrorMessage(err));
+    // Save before activating to ensure latest config is persisted
+    const { nodes: n, edges: e } = useEditorStore.getState();
+    await updateWorkflow.mutateAsync({ id: workflowId, definition: { nodes: n, edges: e } }).catch(() => {});
+    if (workflowActive) {
+      await deactivateWorkflow.mutateAsync(workflowId).catch(() => {});
+    } else {
+      await activateWorkflow.mutateAsync(workflowId).catch(() => {});
     }
   };
 
@@ -177,7 +177,7 @@ export function EditorToolbar({
       </Button>
       <Button size="sm" className="gap-1.5 shadow-sm shadow-primary/20" onClick={onRun} disabled={isRunning}>
         {isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-        {isRunning ? 'Running...' : 'Run'}
+        {isRunning ? 'Testing...' : 'Test'}
       </Button>
     </div>
   );

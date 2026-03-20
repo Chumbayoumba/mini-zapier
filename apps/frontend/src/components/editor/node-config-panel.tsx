@@ -91,9 +91,9 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
     ] },
   ],
   TELEGRAM: [
-    { key: 'integrationId', label: 'Telegram Bot', placeholder: 'Select a bot...', inputType: 'select', required: true, options: [], hint: 'Select from your integrations' },
+    { key: 'integrationId', label: 'Telegram Bot', placeholder: 'Select a bot...', inputType: 'select', options: [], hint: 'Select from your integrations' },
     { key: 'chatId', label: 'Chat ID', placeholder: 'Auto from trigger', hint: 'Leave empty to reply to the user who triggered this workflow' },
-    { key: 'message', label: 'Message', placeholder: 'Hello, {{trigger.from.first_name}}! 👋\n\nWelcome!', inputType: 'textarea', rows: 4, required: true, hint: 'Supports {{template}} variables — see list below' },
+    { key: 'message', label: 'Message (leave empty to use previous node output)', placeholder: 'Leave empty to auto-use AI response', inputType: 'textarea', rows: 4, hint: 'Supports {{template}} variables — see list below' },
     { key: 'parseMode', label: 'Parse Mode', inputType: 'select', placeholder: '', options: [
       { value: 'HTML', label: 'HTML' },
       { value: 'Markdown', label: 'Markdown' },
@@ -118,6 +118,72 @@ const ACTION_FIELDS: Record<string, Array<ConfigField>> = {
   ],
   TRANSFORM: [
     { key: 'expression', label: 'JSONata Expression', placeholder: '$.data.items[price > 100]', inputType: 'code', rows: 5, required: true, hint: 'JSONata expression — see docs.jsonata.org' },
+  ],
+  OPENAI: [
+    { key: 'integrationId', label: 'OpenAI Credential', placeholder: 'Select credential...', inputType: 'select', options: [], hint: 'Select from Credentials page or enter API key below' },
+    { key: 'apiKey', label: 'API Key (if no credential)', placeholder: 'sk-...', type: 'password', hint: 'Used only if no credential selected above' },
+    { key: 'operation', label: 'Operation', placeholder: '', inputType: 'select', options: [
+      { value: 'chat', label: '💬 Chat Completion' },
+      { value: 'image', label: '🎨 Image Generation (DALL-E)' },
+    ] },
+    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
+      { value: 'gpt-4o', label: 'GPT-4o' },
+      { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+      { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+    ] },
+    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3, hint: 'Sets the behavior of the AI' },
+    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, hint: 'Supports {{template}} variables' },
+    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number', hint: '0 = deterministic, 2 = creative' },
+    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
+    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
+      { value: 'text', label: 'Text' },
+      { value: 'json', label: 'JSON Object' },
+    ] },
+  ],
+  ANTHROPIC: [
+    { key: 'integrationId', label: 'Anthropic Credential', placeholder: 'Select credential...', inputType: 'select', options: [], hint: 'Select from Credentials page or enter API key below' },
+    { key: 'apiKey', label: 'API Key (if no credential)', placeholder: 'sk-ant-...', type: 'password', hint: 'Used only if no credential selected above' },
+    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
+      { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
+      { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
+      { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
+    ] },
+    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
+    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, hint: 'Supports {{template}} variables' },
+    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
+    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
+  ],
+  MISTRAL: [
+    { key: 'integrationId', label: 'Mistral Credential', placeholder: 'Select credential...', inputType: 'select', options: [], hint: 'Select from Credentials page or enter API key below' },
+    { key: 'apiKey', label: 'API Key (if no credential)', placeholder: 'your-mistral-key', type: 'password', hint: 'Used only if no credential selected above' },
+    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
+      { value: 'mistral-large-latest', label: 'Mistral Large' },
+      { value: 'mistral-medium-latest', label: 'Mistral Medium' },
+      { value: 'mistral-small-latest', label: 'Mistral Small' },
+      { value: 'open-mistral-nemo', label: 'Mistral Nemo (Open)' },
+    ] },
+    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
+    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, hint: 'Supports {{template}} variables' },
+    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
+    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
+    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
+      { value: 'text', label: 'Text' },
+      { value: 'json', label: 'JSON Object' },
+    ] },
+  ],
+  OPENROUTER: [
+    { key: 'integrationId', label: 'OpenRouter Credential', placeholder: 'Select credential...', inputType: 'select', options: [], hint: 'Select from Credentials page or enter API key below' },
+    { key: 'apiKey', label: 'API Key (if no credential)', placeholder: 'sk-or-...', type: 'password', hint: 'Used only if no credential selected above' },
+    { key: 'model', label: 'Model', placeholder: 'openai/gpt-4o-mini', required: true, hint: 'Select credential first to load available models' },
+    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
+    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, hint: 'Supports {{template}} variables' },
+    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
+    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
+    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
+      { value: 'text', label: 'Text' },
+      { value: 'json', label: 'JSON Object' },
+    ] },
   ],
 };
 
@@ -199,68 +265,6 @@ const LOGIC_FIELDS: Record<string, Array<ConfigField>> = {
   MANUAL_TRIGGER: [
     { key: 'testData', label: 'Test Data (JSON)', placeholder: '{"key": "value"}', inputType: 'textarea', rows: 4, hint: 'JSON data to inject when manually triggered' },
   ],
-  OPENAI: [
-    { key: 'apiKey', label: 'API Key', placeholder: 'sk-...', type: 'password', required: true, hint: 'Your OpenAI API key' },
-    { key: 'operation', label: 'Operation', placeholder: '', inputType: 'select', options: [
-      { value: 'chat', label: '💬 Chat Completion' },
-      { value: 'image', label: '🎨 Image Generation (DALL-E)' },
-    ] },
-    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
-      { value: 'gpt-4o', label: 'GPT-4o' },
-      { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-      { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    ] },
-    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3, hint: 'Sets the behavior of the AI' },
-    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, required: true, hint: 'Supports {{template}} variables' },
-    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number', hint: '0 = deterministic, 2 = creative' },
-    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
-    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
-      { value: 'text', label: 'Text' },
-      { value: 'json', label: 'JSON Object' },
-    ] },
-  ],
-  ANTHROPIC: [
-    { key: 'apiKey', label: 'API Key', placeholder: 'sk-ant-...', type: 'password', required: true, hint: 'Your Anthropic API key' },
-    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
-      { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet' },
-      { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus' },
-      { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' },
-    ] },
-    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
-    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, required: true, hint: 'Supports {{template}} variables' },
-    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
-    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
-  ],
-  MISTRAL: [
-    { key: 'apiKey', label: 'API Key', placeholder: 'your-mistral-key', type: 'password', required: true, hint: 'Your Mistral API key' },
-    { key: 'model', label: 'Model', placeholder: '', inputType: 'select', options: [
-      { value: 'mistral-large-latest', label: 'Mistral Large' },
-      { value: 'mistral-medium-latest', label: 'Mistral Medium' },
-      { value: 'mistral-small-latest', label: 'Mistral Small' },
-      { value: 'open-mistral-nemo', label: 'Mistral Nemo (Open)' },
-    ] },
-    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
-    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, required: true, hint: 'Supports {{template}} variables' },
-    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
-    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
-    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
-      { value: 'text', label: 'Text' },
-      { value: 'json', label: 'JSON Object' },
-    ] },
-  ],
-  OPENROUTER: [
-    { key: 'apiKey', label: 'API Key', placeholder: 'sk-or-...', type: 'password', required: true, hint: 'Your OpenRouter API key — models list loads automatically' },
-    { key: 'model', label: 'Model', placeholder: 'openai/gpt-4o-mini', required: true, hint: 'Enter model ID or select after loading models' },
-    { key: 'systemPrompt', label: 'System Prompt', placeholder: 'You are a helpful assistant...', inputType: 'textarea', rows: 3 },
-    { key: 'userPrompt', label: 'User Prompt', placeholder: '{{trigger.text}}', inputType: 'textarea', rows: 3, required: true, hint: 'Supports {{template}} variables' },
-    { key: 'temperature', label: 'Temperature', placeholder: '0.7', type: 'number' },
-    { key: 'maxTokens', label: 'Max Tokens', placeholder: '1024', type: 'number' },
-    { key: 'responseFormat', label: 'Response Format', placeholder: '', inputType: 'select', options: [
-      { value: 'text', label: 'Text' },
-      { value: 'json', label: 'JSON Object' },
-    ] },
-  ],
 };
 
 const CRON_EXAMPLES = [
@@ -305,6 +309,20 @@ export function NodeConfigPanel({ embedded = false }: { embedded?: boolean }) {
       return res.data.data || res.data;
     },
     staleTime: 30000,
+  });
+
+  // Fetch AI models when an AI credential is selected
+  const aiNodeType = selectedNode?.data?.type as string;
+  const aiIntegrationId = (selectedNode?.data?.config as any)?.integrationId;
+  const isAiNode = ['OPENAI', 'ANTHROPIC', 'MISTRAL', 'OPENROUTER'].includes(aiNodeType);
+  const { data: aiModels } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ['ai-models', aiIntegrationId],
+    queryFn: async () => {
+      const res = await api.get(`/integrations/${aiIntegrationId}/models`);
+      return res.data.models || [];
+    },
+    enabled: isAiNode && !!aiIntegrationId,
+    staleTime: 60000,
   });
 
   if (!selectedNode) return null;
@@ -379,17 +397,21 @@ export function NodeConfigPanel({ embedded = false }: { embedded?: boolean }) {
   }
 
   // Inject bot options into TELEGRAM action integrationId field
+  // Auto-inherit bot from trigger if not set
   if (nodeType === 'TELEGRAM' && !isTrigger && fields) {
     const telegramBots = integrations.filter((i) => i.type === 'TELEGRAM');
+    const triggerNode = nodes.find((n) => n.type === 'triggerNode' && n.data?.type === 'TELEGRAM');
+    const triggerBotId = (triggerNode?.data?.config as any)?.integrationId;
+
     fields = fields.map((f) => {
       if (f.key === 'integrationId') {
         return {
           ...f,
           options: telegramBots.map((b) => ({ value: b.id, label: b.name })),
-          hint: telegramBots.length === 0
-            ? '⚠️ No bots found. Add one on the Integrations page'
-            : hasTelegramTrigger
-              ? 'Select the same bot as in the trigger'
+          hint: triggerBotId
+            ? 'Auto-inherited from Telegram trigger'
+            : telegramBots.length === 0
+              ? '⚠️ No bots found. Add one on the Integrations page'
               : 'Select a bot for sending messages',
         };
       }
@@ -453,7 +475,53 @@ export function NodeConfigPanel({ embedded = false }: { embedded?: boolean }) {
     );
   }
 
+  // Inject AI credential options into AI action nodes
+  if (['OPENAI', 'ANTHROPIC', 'MISTRAL', 'OPENROUTER'].includes(nodeType) && fields) {
+    const aiIntegrations = integrations.filter((i) => i.type === nodeType);
+    fields = fields.map((f) =>
+      f.key === 'integrationId'
+        ? {
+            ...f,
+            options: [
+              { value: '', label: '🔑 Enter API key manually' },
+              ...aiIntegrations.map((a) => ({ value: a.id, label: `🤖 ${a.name}` })),
+            ],
+            hint: aiIntegrations.length === 0
+              ? 'Add credential on the Credentials page, or enter API key below'
+              : 'Select saved credential or enter key manually',
+          }
+        : f,
+    );
+  }
+
   const config = (selectedNode.data?.config as Record<string, string>) || {};
+
+  // Auto-inherit Telegram bot from trigger for action nodes
+  if (nodeType === 'TELEGRAM' && !isTrigger && !config.integrationId) {
+    const triggerNode = nodes.find((n) => n.type === 'triggerNode' && n.data?.type === 'TELEGRAM');
+    const triggerBotId = (triggerNode?.data?.config as any)?.integrationId;
+    if (triggerBotId) {
+      const latestNode = useEditorStore.getState().nodes.find(n => n.id === selectedNode.id);
+      const latestConfig = (latestNode?.data?.config as Record<string, string>) || {};
+      if (!latestConfig.integrationId) {
+        updateNodeData(selectedNode.id, { config: { ...latestConfig, integrationId: triggerBotId } });
+      }
+    }
+  }
+
+  // Hide apiKey field when AI credential is selected
+  if (['OPENAI', 'ANTHROPIC', 'MISTRAL', 'OPENROUTER'].includes(nodeType) && config.integrationId && fields) {
+    fields = fields.map((f) => f.key === 'apiKey' ? { ...f, hidden: true } : f);
+  }
+
+  // Inject dynamic AI models when credential is selected
+  if (isAiNode && aiModels && aiModels.length > 0 && fields) {
+    fields = fields.map((f) =>
+      f.key === 'model'
+        ? { ...f, inputType: 'select' as const, options: aiModels.map((m) => ({ value: m.id, label: m.name })) }
+        : f,
+    );
+  }
 
   // Auto-hide IMAP fields when email integration is selected (not Manual)
   if (nodeType === 'EMAIL' && isTrigger && fields && config.integrationId) {
@@ -492,12 +560,16 @@ export function NodeConfigPanel({ embedded = false }: { embedded?: boolean }) {
     // Auto-set 'to' and 'subject' fields when switching to auto-reply mode
     if (key === 'toMode' && value === 'auto_reply') {
       updates.to = '{{trigger.from}}';
-      if (!config.subject) {
+      const currentConfig = (useEditorStore.getState().nodes.find(n => n.id === selectedNode.id)?.data?.config as Record<string, string>) || {};
+      if (!currentConfig.subject) {
         updates.subject = 'Re: {{trigger.subject}}';
       }
     }
+    // Read latest config from store to avoid stale closure
+    const latestNode = useEditorStore.getState().nodes.find(n => n.id === selectedNode.id);
+    const latestConfig = (latestNode?.data?.config as Record<string, string>) || {};
     updateNodeData(selectedNode.id, {
-      config: { ...config, ...updates },
+      config: { ...latestConfig, ...updates },
     });
 
     // Validate all changed fields

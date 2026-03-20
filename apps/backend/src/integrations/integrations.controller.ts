@@ -18,6 +18,7 @@ import {
   VerifyWebhookDto,
   VerifyHTTPApiDto,
   VerifyDatabaseDto,
+  VerifyAiKeyDto,
 } from './integrations.dto';
 import { OpenRouterAction } from '../engine/actions/openrouter.action';
 
@@ -78,10 +79,40 @@ export class IntegrationsController {
     return this.integrationsService.verifyDatabase(dto);
   }
 
+  @Post('openai/verify')
+  @ApiOperation({ summary: 'Verify OpenAI API key' })
+  verifyOpenAI(@Body() dto: VerifyAiKeyDto) {
+    return this.integrationsService.verifyOpenAI(dto.apiKey);
+  }
+
+  @Post('anthropic/verify')
+  @ApiOperation({ summary: 'Verify Anthropic API key' })
+  verifyAnthropic(@Body() dto: VerifyAiKeyDto) {
+    return this.integrationsService.verifyAnthropic(dto.apiKey);
+  }
+
+  @Post('mistral/verify')
+  @ApiOperation({ summary: 'Verify Mistral API key' })
+  verifyMistral(@Body() dto: VerifyAiKeyDto) {
+    return this.integrationsService.verifyMistral(dto.apiKey);
+  }
+
+  @Post('openrouter/verify')
+  @ApiOperation({ summary: 'Verify OpenRouter API key' })
+  verifyOpenRouter(@Body() dto: VerifyAiKeyDto) {
+    return this.integrationsService.verifyOpenRouter(dto.apiKey);
+  }
+
   @Post(':id/test')
   @ApiOperation({ summary: 'Test saved integration connection' })
   testIntegration(@Request() req: any, @Param('id') id: string) {
     return this.integrationsService.testIntegration(id, req.user.sub);
+  }
+
+  @Get(':id/models')
+  @ApiOperation({ summary: 'Get available models for an AI integration' })
+  async getModels(@Request() req: any, @Param('id') id: string) {
+    return this.integrationsService.getModelsForIntegration(id, req.user.sub);
   }
 
   @Get('openrouter/models')

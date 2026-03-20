@@ -79,7 +79,7 @@ export class WorkflowValidationService {
           }
           break;
         case 'TELEGRAM':
-          await this.validateTelegram(node.id, nodeLabel, config, node.type === 'triggerNode', errors);
+          await this.validateTelegram(node.id, nodeLabel, config, node.type === 'triggerNode', errors, nodes);
           break;
         case 'HTTP_REQUEST':
           this.validateHttpRequest(node.id, nodeLabel, config, errors);
@@ -99,6 +99,16 @@ export class WorkflowValidationService {
         case 'OPENROUTER':
           this.validateAiNode(node.id, nodeLabel, nodeType, config, errors);
           break;
+      }
+
+      // Validate integrationId exists for any node that references one
+      if (config.integrationId) {
+        const integration = await this.prisma.integration.findUnique({
+          where: { id: config.integrationId },
+        });
+        if (!integration) {
+          errors.push({ nodeId: node.id, field: 'integrationId', message: `"${nodeLabel}": Selected integration not found — it may have been deleted` });
+        }
       }
     }
 
@@ -142,10 +152,23 @@ export class WorkflowValidationService {
     config: any,
     isTrigger: boolean,
     errors: ValidationError[],
+    allNodes?: any[],
   ) {
     if (!config.integrationId) {
-      errors.push({ nodeId, field: 'integrationId', message: `"${label}": Telegram bot must be selected` });
-      return;
+      // For action nodes, check if trigger has a bot (auto-inherit)
+      if (!isTrigger) {
+        const triggerNode = allNodes?.find((n: any) => n.type === 'triggerNode' && n.data?.type === 'TELEGRAM');
+        if (triggerNode?.data?.config?.integrationId) {
+          // Will auto-inherit from trigger — skip rest of validation
+          return;
+        } else {
+          errors.push({ nodeId, field: 'integrationId', message: `"${label}": Telegram bot must be selected` });
+          return;
+        }
+      } else {
+        errors.push({ nodeId, field: 'integrationId', message: `"${label}": Telegram bot must be selected` });
+        return;
+      }
     }
     // Verify integration exists
     const integration = await this.prisma.integration.findUnique({
@@ -156,9 +179,6 @@ export class WorkflowValidationService {
     }
     if (isTrigger && !config.eventType) {
       errors.push({ nodeId, field: 'eventType', message: `"${label}": Event type must be selected` });
-    }
-    if (!isTrigger && !config.message) {
-      errors.push({ nodeId, field: 'message', message: `"${label}": Message text is required` });
     }
   }
 
@@ -239,11 +259,8 @@ export class WorkflowValidationService {
   }
 
   private validateAiNode(nodeId: string, label: string, nodeType: string, config: any, errors: ValidationError[]) {
-    if (!config.apiKey) {
-      errors.push({ nodeId, field: 'apiKey', message: `"${label}": API key is required` });
-    }
-    if (!config.userPrompt) {
-      errors.push({ nodeId, field: 'userPrompt', message: `"${label}": User prompt is required` });
+    if (!config.apiKey && !config.integrationId) {
+      errors.push({ nodeId, field: 'apiKey', message: `"${label}": API key or credential is required` });
     }
     if (nodeType === 'OPENROUTER' && !config.model) {
       errors.push({ nodeId, field: 'model', message: `"${label}": Model must be selected` });

@@ -28,7 +28,7 @@ export class EmailAction implements ActionHandler {
   constructor(private configService: ConfigService) {}
 
   async execute(config: any): Promise<any> {
-    const { to, subject, body, isHtml = false, from, cc, bcc, _context } = config;
+    const { to, subject, body, isHtml = false, from, cc, bcc, _context, _nodeInput } = config;
 
     if (!to || typeof to !== 'string') {
       throw new BadRequestException('Recipient (to) is required');

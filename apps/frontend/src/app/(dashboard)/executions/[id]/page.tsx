@@ -144,42 +144,42 @@ export default function ExecutionDetailPage() {
         );
 
         return (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3">
+          <div className="rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-4 space-y-3">
             <div className="flex items-start gap-3">
-              <XCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-              <h3 className="font-semibold text-red-800">Execution Failed</h3>
+              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <h3 className="font-semibold text-red-800 dark:text-red-300">Execution Failed</h3>
             </div>
 
             {/* Error message */}
-            <p className="text-red-700 text-sm">{execution.error}</p>
+            <p className="text-red-700 dark:text-red-300 text-sm">{execution.error}</p>
 
             {/* Failed step context */}
             {failedStep && (
               <div className="space-y-2 mt-3">
                 <div className="text-sm">
-                  <span className="font-medium text-red-800">Failed Node:</span>{' '}
-                  <span className="text-red-700">{failedStep.nodeName} ({failedStep.nodeType})</span>
+                  <span className="font-medium text-red-800 dark:text-red-300">Failed Node:</span>{' '}
+                  <span className="text-red-700 dark:text-red-400">{failedStep.nodeName} ({failedStep.nodeType})</span>
                 </div>
 
                 <div className="text-sm">
-                  <span className="font-medium text-red-800">Node ID:</span>{' '}
-                  <code className="text-red-600 bg-red-100 px-1 rounded">{failedStep.nodeId}</code>
+                  <span className="font-medium text-red-800 dark:text-red-300">Node ID:</span>{' '}
+                  <code className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-1 rounded">{failedStep.nodeId}</code>
                 </div>
 
                 {failedStep.retryCount != null && failedStep.retryCount > 0 && (
                   <div className="text-sm">
-                    <span className="font-medium text-red-800">Retry Attempts:</span>{' '}
-                    <span className="text-red-700">{failedStep.retryCount}</span>
+                    <span className="font-medium text-red-800 dark:text-red-300">Retry Attempts:</span>{' '}
+                    <span className="text-red-700 dark:text-red-400">{failedStep.retryCount}</span>
                   </div>
                 )}
 
                 {/* Input that caused the failure */}
                 {failedStep.input && (
                   <details className="mt-2">
-                    <summary className="text-sm font-medium text-red-800 cursor-pointer">
+                    <summary className="text-sm font-medium text-red-800 dark:text-red-300 cursor-pointer">
                       Input Data
                     </summary>
-                    <pre className="mt-1 text-xs bg-red-100 p-2 rounded overflow-auto max-h-48">
+                    <pre className="mt-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200 p-2 rounded overflow-auto max-h-48">
                       {JSON.stringify(failedStep.input, null, 2)}
                     </pre>
                   </details>
@@ -188,10 +188,10 @@ export default function ExecutionDetailPage() {
                 {/* Stack trace */}
                 {failedStep.errorStack && (
                   <details className="mt-2">
-                    <summary className="text-sm font-medium text-red-800 cursor-pointer">
+                    <summary className="text-sm font-medium text-red-800 dark:text-red-300 cursor-pointer">
                       Stack Trace
                     </summary>
-                    <pre className="mt-1 text-xs bg-red-100 p-2 rounded overflow-auto max-h-48 whitespace-pre-wrap">
+                    <pre className="mt-1 text-xs bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-200 p-2 rounded overflow-auto max-h-48 whitespace-pre-wrap">
                       {failedStep.errorStack}
                     </pre>
                   </details>
@@ -251,24 +251,24 @@ export default function ExecutionDetailPage() {
                     )}
                     {step.input && (
                       <details className="mt-1">
-                        <summary className="text-xs text-gray-500 cursor-pointer">Input</summary>
-                        <pre className="text-xs bg-gray-50 p-1 rounded mt-1 overflow-auto max-h-32">
+                        <summary className="text-xs text-muted-foreground cursor-pointer">Input</summary>
+                        <pre className="text-xs bg-muted/50 text-foreground p-1 rounded mt-1 overflow-auto max-h-32">
                           {JSON.stringify(step.input, null, 2)}
                         </pre>
                       </details>
                     )}
                     {step.output && (
                       <details className="mt-1">
-                        <summary className="text-xs text-gray-500 cursor-pointer">Output</summary>
-                        <pre className="text-xs bg-gray-50 p-1 rounded mt-1 overflow-auto max-h-32">
+                        <summary className="text-xs text-muted-foreground cursor-pointer">Output</summary>
+                        <pre className="text-xs bg-muted/50 text-foreground p-1 rounded mt-1 overflow-auto max-h-32">
                           {JSON.stringify(step.output, null, 2)}
                         </pre>
                       </details>
                     )}
                     {step.errorStack && (
                       <details className="mt-1">
-                        <summary className="text-xs text-red-500 cursor-pointer">Stack Trace</summary>
-                        <pre className="text-xs bg-red-50 p-1 rounded mt-1 overflow-auto max-h-32 whitespace-pre-wrap">
+                        <summary className="text-xs text-red-500 dark:text-red-400 cursor-pointer">Stack Trace</summary>
+                        <pre className="text-xs bg-red-50 dark:bg-red-950/30 text-red-900 dark:text-red-200 p-1 rounded mt-1 overflow-auto max-h-32 whitespace-pre-wrap">
                           {step.errorStack}
                         </pre>
                       </details>

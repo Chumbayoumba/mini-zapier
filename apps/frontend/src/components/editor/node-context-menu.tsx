@@ -146,7 +146,7 @@ export function NodeContextMenu({
       <div
         ref={menuRef}
         style={style}
-        className="min-w-[200px] rounded-lg border bg-popover shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100"
+        className="min-w-[200px] rounded-lg border border-border/50 bg-background/80 backdrop-blur-xl shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100"
       >
         {renaming ? (
           <div className="px-3 py-2">

@@ -48,7 +48,7 @@ const NODE_CATALOG: NodeTypeDefinition[] = [
 
 export { NODE_CATALOG };
 
-const CATEGORIES = ['trigger', 'action', 'ai', 'logic'] as const;
+const CATEGORIES = ['trigger', 'ai', 'action', 'logic'] as const;
 
 const CATEGORY_CONFIG = {
   trigger: { label: 'Triggers', emoji: '⚡' },
@@ -215,10 +215,11 @@ export function NodePicker({ isOpen, onClose, connectFrom }: NodePickerProps) {
   return (
     <>
       <div className="fixed inset-0 z-[100] bg-black/40 node-picker-backdrop" onClick={onClose} />
-      <div className="fixed inset-0 z-[101] flex items-start justify-center pt-[12vh]">
+      <div className="fixed inset-0 z-[101] flex items-start justify-center pt-[12vh]" onClick={onClose}>
         <div
           className="w-[480px] max-h-[65vh] bg-card border rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
           onKeyDown={handleKeyDown}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Search */}
           <div className="flex items-center gap-2 px-3 py-2.5 border-b">

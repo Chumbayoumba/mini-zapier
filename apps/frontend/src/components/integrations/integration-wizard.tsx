@@ -32,11 +32,12 @@ import {
   Bot,
   Sparkles,
   Save,
+  Brain,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────
 
-export type IntegrationType = 'TELEGRAM' | 'SMTP' | 'WEBHOOK' | 'HTTP_API' | 'DATABASE';
+export type IntegrationType = 'TELEGRAM' | 'SMTP' | 'WEBHOOK' | 'HTTP_API' | 'DATABASE' | 'OPENAI' | 'ANTHROPIC' | 'MISTRAL' | 'OPENROUTER';
 
 interface Integration {
   id: string;
@@ -125,6 +126,42 @@ const INTEGRATION_TYPES: {
     bgColor: 'bg-violet-500/10',
     borderColor: 'border-violet-500/30',
   },
+  {
+    type: 'OPENAI',
+    label: 'OpenAI',
+    description: 'GPT models and DALL-E image generation',
+    icon: Brain,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10',
+    borderColor: 'border-emerald-500/30',
+  },
+  {
+    type: 'ANTHROPIC',
+    label: 'Anthropic',
+    description: 'Claude AI chat completion',
+    icon: Brain,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/10',
+    borderColor: 'border-amber-500/30',
+  },
+  {
+    type: 'MISTRAL',
+    label: 'Mistral',
+    description: 'Mistral AI chat completion',
+    icon: Brain,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/30',
+  },
+  {
+    type: 'OPENROUTER',
+    label: 'OpenRouter',
+    description: 'Access 100+ AI models via single API',
+    icon: Brain,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10',
+    borderColor: 'border-purple-500/30',
+  },
 ];
 
 // ─── Field definitions per type ──────────────────────────
@@ -160,6 +197,18 @@ const TYPE_FIELDS: Record<IntegrationType, FieldDef[]> = {
     { key: 'secret', label: 'Secret (optional)', placeholder: 'HMAC signing secret', type: 'password', help: 'Used to verify webhook signatures (HMAC)' },
     { key: 'method', label: 'HTTP Method', placeholder: '', selectOptions: [{ value: 'POST', label: 'POST' }, { value: 'GET', label: 'GET' }, { value: 'PUT', label: 'PUT' }], help: 'HTTP method the webhook expects' },
   ],
+  OPENAI: [
+    { key: 'apiKey', label: 'API Key', placeholder: 'sk-...', type: 'password', required: true, help: 'Your OpenAI API key', helpUrl: 'https://platform.openai.com/api-keys', helpLinkText: 'Get API Key' },
+  ],
+  ANTHROPIC: [
+    { key: 'apiKey', label: 'API Key', placeholder: 'sk-ant-...', type: 'password', required: true, help: 'Your Anthropic API key', helpUrl: 'https://console.anthropic.com/settings/keys', helpLinkText: 'Get API Key' },
+  ],
+  MISTRAL: [
+    { key: 'apiKey', label: 'API Key', placeholder: 'your-mistral-key', type: 'password', required: true, help: 'Your Mistral AI API key', helpUrl: 'https://console.mistral.ai/api-keys', helpLinkText: 'Get API Key' },
+  ],
+  OPENROUTER: [
+    { key: 'apiKey', label: 'API Key', placeholder: 'sk-or-...', type: 'password', required: true, help: 'Your OpenRouter API key', helpUrl: 'https://openrouter.ai/keys', helpLinkText: 'Get API Key' },
+  ],
 };
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -175,6 +224,10 @@ function getDefaultName(type: IntegrationType): string {
     DATABASE: 'My Database',
     HTTP_API: 'HTTP API',
     WEBHOOK: 'My Webhook',
+    OPENAI: 'OpenAI',
+    ANTHROPIC: 'Anthropic',
+    MISTRAL: 'Mistral',
+    OPENROUTER: 'OpenRouter',
   };
   return names[type];
 }
@@ -335,6 +388,18 @@ export function IntegrationWizard({
           });
           break;
         }
+        case 'OPENAI':
+          res = await api.post('/integrations/openai/verify', { apiKey: formData.apiKey });
+          break;
+        case 'ANTHROPIC':
+          res = await api.post('/integrations/anthropic/verify', { apiKey: formData.apiKey });
+          break;
+        case 'MISTRAL':
+          res = await api.post('/integrations/mistral/verify', { apiKey: formData.apiKey });
+          break;
+        case 'OPENROUTER':
+          res = await api.post('/integrations/openrouter/verify', { apiKey: formData.apiKey });
+          break;
       }
       const data = res?.data?.data || res?.data;
       setVerifyResult(data);
@@ -423,6 +488,13 @@ export function IntegrationWizard({
         metadata = { message: verifyResult?.message };
         break;
       }
+      case 'OPENAI':
+      case 'ANTHROPIC':
+      case 'MISTRAL':
+      case 'OPENROUTER':
+        config = { apiKey: formData.apiKey };
+        metadata = { models: verifyResult?.models?.slice(0, 5)?.map((m: any) => m.id || m) };
+        break;
     }
 
     createMutation.mutate({ type: selectedType, name, config, metadata });
@@ -459,7 +531,8 @@ export function IntegrationWizard({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col" onPointerDownOutside={() => handleClose(false)} onEscapeKeyDown={() => handleClose(false)}>
+        <div className="flex-1 overflow-y-auto space-y-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -801,18 +874,21 @@ export function IntegrationWizard({
                     <SummaryRow label="Method" value={formData.method || 'POST'} />
                   </>
                 )}
+                {['OPENAI', 'ANTHROPIC', 'MISTRAL', 'OPENROUTER'].includes(selectedType) && (
+                  <SummaryRow label="API Key" value={formData.apiKey ? '••••' + formData.apiKey.slice(-4) : ''} />
+                )}
               </div>
             </div>
           </div>
         )}
+        </div>
 
         {/* ─── Footer ─── */}
         {step !== 'type' && (
-          <div className="flex justify-between pt-2 border-t">
+          <div className="flex justify-between pt-2 border-t shrink-0">
             <Button
               variant="ghost"
               onClick={goBack}
-              disabled={step === 'config' && !editIntegration}
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back

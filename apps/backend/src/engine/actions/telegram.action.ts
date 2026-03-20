@@ -11,7 +11,7 @@ export class TelegramAction implements ActionHandler {
   private readonly logger = new Logger(TelegramAction.name);
 
   async execute(config: any): Promise<any> {
-    const { botToken, chatId, message, parseMode = 'HTML', _context } = config;
+    const { botToken, chatId, message, parseMode = 'HTML', _context, _nodeInput } = config;
 
     // Bot token priority: node config → workflow integrations → trigger data
     const token = botToken
@@ -19,14 +19,24 @@ export class TelegramAction implements ActionHandler {
       || _context?.triggerData?.botToken;
     const targetChatId = chatId
       || _context?.triggerData?.chat?.id
-      || _context?.triggerData?.message?.chat?.id;
-    const text = message || 'Hello!';
+      || _context?.triggerData?.message?.chat?.id
+      || _context?.triggerData?.chatId;
+    // Message: configured -> previous node output -> default
+    let text = message;
+    if (!text || text.includes('{{')) {
+      let prev = _nodeInput;
+      while (Array.isArray(prev)) prev = prev[0];
+      if (prev) {
+        text = typeof prev === 'string' ? prev : prev.content || prev.text || prev.message || JSON.stringify(prev);
+      }
+    }
+    if (!text) text = 'Hello!';
 
     if (!token) {
       throw new BadRequestException('Telegram bot token is required. Configure it in the node settings.');
     }
-    if (!targetChatId) {
-      throw new BadRequestException('Chat ID is required. Configure it in the node settings or use a Telegram trigger.');
+    if (!targetChatId || targetChatId === '0' || targetChatId === 0) {
+      return { success: true, testMode: true, message: text, note: 'No chat ID. In production, Telegram trigger provides it automatically.' };
     }
 
     // chatId must be numeric (can be negative for groups)

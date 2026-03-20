@@ -117,8 +117,14 @@ export function useActivateWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['workflows'] });
       toast.success('Workflow activated');
     },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error));
+    onError: (error: any) => {
+      const data = error.response?.data;
+      if (data?.errors && Array.isArray(data.errors)) {
+        const msgs = data.errors.map((e: any) => e.message).join('\n');
+        toast.error('Validation failed', { description: msgs, duration: 8000 });
+      } else {
+        toast.error(getErrorMessage(error));
+      }
     },
   });
 }

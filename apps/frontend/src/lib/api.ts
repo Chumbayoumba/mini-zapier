@@ -16,20 +16,43 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Refresh token mutex — prevents race condition when multiple 401s fire simultaneously
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle network errors
     if (!error.response) {
-      toast.error('Network error — check your connection');
       return Promise.reject(error);
     }
 
-    // Handle 401 with token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+
+      // If already refreshing, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          addRefreshSubscriber((token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
+
       try {
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
@@ -42,17 +65,23 @@ api.interceptors.response.use(
         const newAccessToken = data.data?.accessToken || data.accessToken;
         const newRefreshToken = data.data?.refreshToken || data.refreshToken;
         localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
+        if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
+
+        isRefreshing = false;
+        onRefreshed(newAccessToken);
+
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       } catch {
+        isRefreshing = false;
+        refreshSubscribers = [];
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
           toast.error('Session expired — please sign in again');
           setTimeout(() => {
-            window.location.href = '/login?reason=session_expired';
-          }, 1500);
+            window.location.href = '/login';
+          }, 1000);
         }
         return Promise.reject(error);
       }

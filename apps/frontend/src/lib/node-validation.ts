@@ -17,7 +17,7 @@ export function validateNodeField(
   const v = value.trim();
 
   // URL fields
-  if (fieldKey === 'url' || fieldKey === 'webhookUrl') {
+  if (fieldKey === 'url' || fieldKey === 'webhookUrl' || fieldKey === 'baseUrl') {
     if (!URL_REGEX.test(v) && !TEMPLATE_VAR_REGEX.test(v)) {
       return 'URL must start with http:// or https://';
     }

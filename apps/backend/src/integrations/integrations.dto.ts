@@ -85,3 +85,10 @@ export class VerifyDatabaseDto {
   @IsNotEmpty()
   connectionString!: string;
 }
+
+export class VerifyAiKeyDto {
+  @ApiProperty({ example: 'sk-...' })
+  @IsString()
+  @IsNotEmpty()
+  apiKey!: string;
+}

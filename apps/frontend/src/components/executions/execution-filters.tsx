@@ -85,8 +85,17 @@ export function ExecutionFilters({
         <Input
           type="date"
           value={dateTo}
-          onChange={(e) => onDateToChange(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (dateFrom && val && val < dateFrom) {
+              onDateFromChange(val);
+              onDateToChange(dateFrom);
+            } else {
+              onDateToChange(val);
+            }
+          }}
           className="h-8 w-36 text-xs"
+          min={dateFrom || undefined}
         />
       </div>
 
